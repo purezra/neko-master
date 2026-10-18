@@ -37,8 +37,8 @@ export function ComparisonContent({ activeBackendId, timeRange, autoRefresh }: {
   };
   const ranking = (title: string, rows: TrafficComparisonRow[], showDomainIcons = false) => <Card className="min-w-0">
     <CardHeader><CardTitle className="text-base">{title}</CardTitle><p className="text-xs text-muted-foreground">{t("rankingHint")}</p></CardHeader>
-    <CardContent className="space-y-4">
-      {!rows.length && <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{t("noGrowth")}</div>}
+    <CardContent className="flex flex-1 flex-col justify-between gap-4">
+      {!rows.length && <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{t("noGrowth")}</div>}
       {rows.map((row, index) => <div key={row.key} className="space-y-2">
         <div className="flex items-start justify-between gap-3 text-sm">
           <div className="min-w-0"><div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ export function ComparisonContent({ activeBackendId, timeRange, autoRefresh }: {
       : !data ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" aria-busy="true">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-32 animate-pulse rounded-xl bg-muted" />)}</div>
       : <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{metrics.map(metric => <Card key={metric.key}><CardContent className="space-y-2 p-4"><p className="text-xs text-muted-foreground">{t(metric.key)}</p><p className="text-xl font-semibold tabular-nums">{metric.bytes ? formatBytes(metric.current) : formatNumber(metric.current)}</p><p className="text-xs text-muted-foreground">{t("baseline")}: {metric.bytes ? formatBytes(metric.baseline) : formatNumber(metric.baseline)}</p>{renderChange(metric.current, metric.baseline, metric.bytes)}</CardContent></Card>)}</div>
-        <div className="grid items-start gap-6 lg:grid-cols-2">{ranking(t("deviceGrowth"), data.devices)}{ranking(t("domainGrowth"), data.domains, true)}</div>
+        <div className="grid items-stretch gap-6 lg:grid-cols-2">{ranking(t("deviceGrowth"), data.devices)}{ranking(t("domainGrowth"), data.domains, true)}</div>
       </>}
   </div>;
 }
