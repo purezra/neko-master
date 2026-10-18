@@ -14,7 +14,8 @@
     "export": "Export Data",
     "health": "Health",
     "settings": "Settings",
-    "showcaseMode": "Showcase Mode"
+    "showcaseMode": "Showcase Mode",
+    "comparison": "Compare"
   },
   "header": {
     "title": "Neko Master",
@@ -254,7 +255,29 @@
     "connections": "connections",
     "total": "Total",
     "download": "Download",
-    "upload": "Upload"
+    "upload": "Upload",
+    "search": "Search IP, name or group",
+    "noMatches": "No devices match these filters",
+    "clearFilters": "Clear filters",
+    "trafficError": "Could not load device traffic. Please retry.",
+    "allGroups": "All groups",
+    "ungrouped": "Ungrouped",
+    "group": "Group",
+    "manage": "Names & groups",
+    "address": "Device IP",
+    "name": "Device name",
+    "namePlaceholder": "e.g. My computer, Living room TV",
+    "groupPlaceholder": "e.g. Family, Living room, Work",
+    "profileHint": "Names are saved per gateway and IP. Reassign them if the IP changes. Save an empty name or group to clear it.",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Device profile saved",
+    "saveError": "Could not save. Please retry.",
+    "cancel": "Cancel",
+    "profilesError": "Could not load device profiles",
+    "retry": "Retry",
+    "exportFiltered": "Export filtered devices",
+    "matched": "{count} devices matched; charts show up to the top 100 by traffic"
   },
   "rules": {
     "title": "Rules",
@@ -313,7 +336,13 @@
     "checkNow": "Check",
     "newVersion": "New Version",
     "goToUpdate": "Go to update",
-    "viewOnGitHub": "View on GitHub"
+    "viewOnGitHub": "View on GitHub",
+    "forkDescription": "A Neko Master fork maintained by purezra",
+    "latestForkVersion": "Latest fork release",
+    "noRelease": "No release published for this fork",
+    "forkRepository": "Current fork repository",
+    "upstream": "Original project & credits",
+    "close": "Close"
   },
   "common": {
     "daysSuffix": "d ago",
@@ -668,5 +697,28 @@
     "noBackends": "No health records yet",
     "noBackendsHint": "Health checks run automatically every minute for all enabled backends and will appear here",
     "checkInterval": "Health checks are recorded once per minute. Gaps indicate the collector service was interrupted."
+  },
+  "comparison": {
+    "title": "Period comparison",
+    "description": "Compare equal durations and find the devices and domains with the largest traffic increases.",
+    "today": "Today / yesterday",
+    "week": "This week / last week",
+    "selected": "Selected / previous period",
+    "current": "Current period",
+    "baseline": "Baseline period",
+    "rangeHint": "Uses saved, complete minute or UTC hour buckets with an exclusive end. Today and this week are compared with the same elapsed duration in the previous cycle. Data is limited by retention.",
+    "noRange": "No complete comparison buckets yet. Try later or select a range of at most 31 days.",
+    "error": "Could not load comparison data. Check the backend connection and retention range.",
+    "retry": "Retry",
+    "new": "New",
+    "traffic": "Total traffic",
+    "download": "Download",
+    "upload": "Upload",
+    "connections": "Connections",
+    "domains": "Unique domains",
+    "deviceGrowth": "Top 10 device traffic increases",
+    "domainGrowth": "Top 10 domain traffic increases",
+    "rankingHint": "Ranked by additional bytes across the full aggregated dataset.",
+    "noGrowth": "No traffic increases in this period"
   }
 }

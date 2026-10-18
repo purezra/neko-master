@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { BRAND_ASSET_VERSION } from "@/lib/project-info";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -14,61 +15,61 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["utilities", "network"],
     icons: [
       {
-        src: "/icons/icon-72x72.png",
+        src: `/icons/icon-72x72.png?v=${BRAND_ASSET_VERSION}`,
         sizes: "72x72",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-96x96.png",
+        src: `/icons/icon-96x96.png?v=${BRAND_ASSET_VERSION}`,
         sizes: "96x96",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-128x128.png",
+        src: `/icons/icon-128x128.png?v=${BRAND_ASSET_VERSION}`,
         sizes: "128x128",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-144x144.png",
+        src: `/icons/icon-144x144.png?v=${BRAND_ASSET_VERSION}`,
         sizes: "144x144",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-152x152.png",
+        src: `/icons/icon-152x152.png?v=${BRAND_ASSET_VERSION}`,
         sizes: "152x152",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-192x192.png",
+        src: `/icons/icon-192x192.png?v=${BRAND_ASSET_VERSION}`,
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-384x384.png",
+        src: `/icons/icon-384x384.png?v=${BRAND_ASSET_VERSION}`,
         sizes: "384x384",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-512x512.png",
+        src: `/icons/icon-512x512.png?v=${BRAND_ASSET_VERSION}`,
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-maskable-192x192.png",
+        src: `/icons/icon-maskable-192x192.png?v=${BRAND_ASSET_VERSION}`,
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: "/icons/icon-maskable-512x512.png",
+        src: `/icons/icon-maskable-512x512.png?v=${BRAND_ASSET_VERSION}`,
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

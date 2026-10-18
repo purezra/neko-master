@@ -4,6 +4,8 @@ import type {
   IPStats,
   ProxyStats,
   RuleStats,
+  ComparisonRange,
+  TrafficComparisonRow,
 } from '@neko-master/shared';
 import { loadClickHouseConfig } from './clickhouse.config.js';
 
@@ -51,6 +53,20 @@ export type ClickHouseSummary = {
 };
 
 export class ClickHouseReader {
+  async getComparisonGrowth(backendId: number, dimension: 'domain' | 'source_ip', current: ComparisonRange, baseline: ComparisonRange): Promise<TrafficComparisonRow[] | null> {
+    const from = (range: ComparisonRange) => `minute >= toDateTime('${this.toDateTime(range.start)}') AND minute <= toDateTime('${this.toDateTime(range.end)}')`;
+    const rows = await this.query<Record<string, unknown>>(`
+      SELECT ${dimension} AS key,
+        SUMIf(upload + download, ${from(current)}) AS currentBytes,
+        SUMIf(upload + download, ${from(baseline)}) AS baselineBytes
+      FROM ${this.config.database}.traffic_detail_buffer
+      WHERE backend_id = ${backendId} AND ((${from(current)}) OR (${from(baseline)})) AND ${dimension} != ''
+      GROUP BY ${dimension}
+      HAVING currentBytes > baselineBytes
+      ORDER BY (currentBytes - baselineBytes) DESC, key ASC LIMIT 10`);
+    return rows?.map(row => ({ key: String(row.key), currentBytes: Number(row.currentBytes), baselineBytes: Number(row.baselineBytes) })) ?? null;
+  }
+
   private readonly config = loadClickHouseConfig();
   private readonly source = this.parseSource(process.env.STATS_QUERY_SOURCE);
   private readonly strictStats = process.env.CH_STRICT_STATS === '1';

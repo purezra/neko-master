@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const GITHUB_REPO =
-  process.env.NEXT_PUBLIC_GITHUB_REPO || "foru17/neko-master";
+import { GITHUB_REPO } from "@/lib/project-info";
 const GITHUB_PACKAGE_URL =
-  `https://raw.githubusercontent.com/${GITHUB_REPO}/refs/heads/main/package.json`;
+  `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 const GITHUB_API_URL =
   `https://api.github.com/repos/${GITHUB_REPO}`;
 const CHECK_INTERVAL = 30 * 60 * 1000; // Check every 30 minutes
@@ -34,6 +33,7 @@ interface VersionCheckResult {
   isChecking: boolean;
   /** GitHub stars count, null if not yet fetched or failed */
   stars: number | null;
+  noRelease: boolean;
   /** Manually trigger a version check */
   checkNow: () => void;
 }
@@ -43,6 +43,7 @@ export function useVersionCheck(currentVersion: string): VersionCheckResult {
   const [hasUpdate, setHasUpdate] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [stars, setStars] = useState<number | null>(null);
+  const [noRelease, setNoRelease] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const check = useCallback(async () => {
@@ -75,10 +76,16 @@ export function useVersionCheck(currentVersion: string): VersionCheckResult {
       // Handle version check
       if (pkgRes.status === "fulfilled" && pkgRes.value.ok) {
         const pkg = await pkgRes.value.json();
-        if (pkg.version) {
-          setLatestVersion(pkg.version);
-          setHasUpdate(compareVersions(currentVersion, pkg.version) > 0);
+        if (typeof pkg.tag_name === "string") {
+          const version = pkg.tag_name.replace(/^v/, "");
+          setLatestVersion(version);
+          setNoRelease(false);
+          setHasUpdate(compareVersions(currentVersion, version) > 0);
         }
+      } else if (pkgRes.status === "fulfilled" && pkgRes.value.status === 404) {
+        setNoRelease(true);
+        setLatestVersion(null);
+        setHasUpdate(false);
       }
 
       // Handle stars count
@@ -91,7 +98,7 @@ export function useVersionCheck(currentVersion: string): VersionCheckResult {
     } catch {
       // Silently fail — network errors, timeouts, CORS issues, etc.
     } finally {
-      if (!controller.signal.aborted) {
+      if (abortRef.current === controller) {
         setIsChecking(false);
       }
     }
@@ -112,5 +119,5 @@ export function useVersionCheck(currentVersion: string): VersionCheckResult {
     };
   }, [check]);
 
-  return { latestVersion, hasUpdate, isChecking, stars, checkNow: check };
+  return { latestVersion, hasUpdate, isChecking, stars, noRelease, checkNow: check };
 }

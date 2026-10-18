@@ -1,4 +1,13 @@
 import type { TimeRange } from "@/lib/api";
+import type { ComparisonRange } from "@neko-master/shared";
+
+export function getDeviceProfilesQueryKey(backendId?: number) {
+  return ["device-profiles", { backendId: backendId ?? null }] as const;
+}
+
+export function getComparisonQueryKey(backendId: number | undefined, current?: ComparisonRange, baseline?: ComparisonRange) {
+  return ["stats", "comparison", { backendId: backendId ?? null, current, baseline }] as const;
+}
 
 type PaginatedQueryParams = {
   offset?: number;

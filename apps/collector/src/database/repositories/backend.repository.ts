@@ -176,7 +176,7 @@ export class BackendRepository {
     // would interfere with the table-rebuild migrations), so the cascade never
     // fires. Explicitly delete all associated data first to avoid orphaned
     // rows accumulating after a backend is removed.
-    this.deleteBackendData(id);
+    this.deleteBackendData(id, true);
     const stmt = this.db.prepare(`DELETE FROM backend_configs WHERE id = ?`);
     stmt.run(id);
   }
@@ -184,9 +184,12 @@ export class BackendRepository {
   /**
    * Delete all data for a specific backend
    */
-  deleteBackendData(id: number): void {
+  deleteBackendData(id: number, includeProfiles = false): void {
     this.db.exec('BEGIN TRANSACTION');
     try {
+      // Device labels are configuration: keep them when clearing traffic,
+      // explicitly remove them when deleting the backend (foreign keys are off).
+      if (includeProfiles) this.db.prepare('DELETE FROM device_profiles WHERE backend_id = ?').run(id);
       this.db.prepare(`DELETE FROM domain_stats WHERE backend_id = ?`).run(id);
       this.db.prepare(`DELETE FROM ip_stats WHERE backend_id = ?`).run(id);
       this.db.prepare(`DELETE FROM proxy_stats WHERE backend_id = ?`).run(id);

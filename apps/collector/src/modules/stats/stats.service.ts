@@ -20,6 +20,7 @@ import type {
   DeviceStats,
 } from './stats.types.js';
 import { ClickHouseReader } from '../clickhouse/clickhouse.reader.js';
+import type { ComparisonRange, DeviceProfile, TrafficComparison, TrafficComparisonRow } from '@neko-master/shared';
 
 interface PaginatedStatsOptions {
   offset?: number;
@@ -34,6 +35,58 @@ interface PaginatedStatsOptions {
 type RoutedSource = 'clickhouse' | 'sqlite';
 
 export class StatsService {
+  getDeviceProfiles(backendId: number): DeviceProfile[] | null {
+    return this.db.getBackend(backendId) ? this.db.repos.device.getProfiles(backendId) : null;
+  }
+
+  saveDeviceProfile(backendId: number, profile: DeviceProfile): DeviceProfile {
+    this.db.repos.device.saveProfile(backendId, profile);
+    return profile;
+  }
+
+  private withDeviceProfiles(backendId: number, rows: DeviceStats[]): DeviceStats[] {
+    const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile]));
+    return rows.map(row => ({ ...row, ...profiles.get(row.sourceIP) }));
+  }
+
+  async getTrafficComparisonWithRouting(backendId: number, currentRange: ComparisonRange, baselineRange: ComparisonRange): Promise<TrafficComparison> {
+    if (!this.db.getBackend(backendId)) throw new Error('Backend not found');
+    const ranges = [currentRange, baselineRange];
+    const times = ranges.map(range => [Date.parse(range.start), Date.parse(range.end)]);
+    if (times.some(([start, end]) => !Number.isFinite(start) || !Number.isFinite(end) || end <= start || end - start > 31 * 86400000 || start % 60000 !== 0 || end % 60000 !== 0) ||
+      times[0][1] - times[0][0] !== times[1][1] - times[1][0] || times[1][1] > times[0][0] ||
+      times.some(([start, end]) => end - start > 6 * 3600000 && (start % 3600000 !== 0 || end % 3600000 !== 0))) {
+      throw new RangeError('Comparison requires equal, non-overlapping complete bucket ranges of at most 31 days');
+    }
+    const [current, baseline] = ranges.map(range => ({ start: new Date(range.start).toISOString(), end: new Date(Date.parse(range.end) - 1).toISOString() }));
+    const labelDevices = (rows: TrafficComparisonRow[]) => {
+      const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile]));
+      return rows.map(row => ({ ...row, displayName: profiles.get(row.key)?.displayName, groupName: profiles.get(row.key)?.groupName }));
+    };
+    const preferCH = ranges.every(range => this.clickHouseReader.shouldUseForRange(range.start, range.end));
+    if (preferCH) {
+      const [currentTotals, baselineTotals, domains, devices] = await Promise.all([
+        this.clickHouseReader.getSummary(backendId, current.start, current.end),
+        this.clickHouseReader.getSummary(backendId, baseline.start, baseline.end),
+        this.clickHouseReader.getComparisonGrowth(backendId, 'domain', current, baseline),
+        this.clickHouseReader.getComparisonGrowth(backendId, 'source_ip', current, baseline),
+      ]);
+      if (currentTotals && baselineTotals && domains && devices) {
+        this.recordRoute('comparison', 'clickhouse');
+        return { currentRange, baselineRange, current: currentTotals, baseline: baselineTotals, domains, devices: labelDevices(devices) };
+      }
+    }
+    this.failIfStrictFallback('comparison');
+    this.recordRoute('comparison', 'sqlite');
+    return {
+      currentRange, baselineRange,
+      current: this.db.getSummary(backendId, current.start, current.end),
+      baseline: this.db.getSummary(backendId, baseline.start, baseline.end),
+      domains: this.db.repos.comparison.getGrowth(backendId, 'domain', current, baseline),
+      devices: labelDevices(this.db.repos.comparison.getGrowth(backendId, 'source_ip', current, baseline)),
+    };
+  }
+
   private clickHouseReader: ClickHouseReader;
   private readonly strictStats = process.env.CH_STRICT_STATS === '1';
   private routeMetricsIntervalMs = Math.max(
@@ -1288,9 +1341,9 @@ export class StatsService {
   getDeviceStats(backendId: number, timeRange: TimeRange, limit: number): DeviceStats[] {
     const stats = this.db.getDevices(backendId, limit, timeRange.start, timeRange.end);
     if (this.shouldIncludeRealtime(timeRange)) {
-      return this.realtimeStore.mergeDeviceStats(backendId, stats, limit);
+      return this.withDeviceProfiles(backendId, this.realtimeStore.mergeDeviceStats(backendId, stats, limit));
     }
-    return stats;
+    return this.withDeviceProfiles(backendId, stats);
   }
 
   async getDeviceStatsWithRouting(
@@ -1313,9 +1366,9 @@ export class StatsService {
       this.db.getDevices(backendId, limit, timeRange.start, timeRange.end);
     this.recordRoute('devices', stats ? 'clickhouse' : 'sqlite');
     if (this.shouldIncludeRealtime(timeRange)) {
-      return this.realtimeStore.mergeDeviceStats(backendId, resolvedStats, limit);
+      return this.withDeviceProfiles(backendId, this.realtimeStore.mergeDeviceStats(backendId, resolvedStats, limit));
     }
-    return resolvedStats;
+    return this.withDeviceProfiles(backendId, resolvedStats);
   }
 
   /**

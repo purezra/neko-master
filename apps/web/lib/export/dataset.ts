@@ -320,6 +320,8 @@ export function buildExportDatasets(
   if (enabled.devices) {
     const rows = takeTop(byTotalDesc(sources.devices), topN).map((item) => ({
       sourceIP: item.sourceIP,
+      displayName: item.displayName ?? "",
+      groupName: item.groupName ?? "",
       totalBytes: totalOf(item),
       downloadBytes: item.totalDownload,
       uploadBytes: item.totalUpload,
@@ -331,6 +333,8 @@ export function buildExportDatasets(
       label: { zh: "设备使用统计", en: "Device Usage" },
       columns: [
         { key: "sourceIP", label: { zh: "设备 IP", en: "Device IP" } },
+        { key: "displayName", label: { zh: "设备备注", en: "Device Name" } },
+        { key: "groupName", label: { zh: "分组", en: "Group" } },
         TOTAL_BYTES_COLUMN,
         DOWNLOAD_BYTES_COLUMN,
         UPLOAD_BYTES_COLUMN,

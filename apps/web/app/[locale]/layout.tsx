@@ -12,6 +12,7 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { ServiceWorkerRegister } from "@/components/common";
 import { Toaster } from "@/components/ui/sonner";
+import { BRAND_ASSET_VERSION } from "@/lib/project-info";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,9 +28,9 @@ export const metadata: Metadata = {
   title: "Neko Master",
   description: "Modern traffic analytics for edge gateways",
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/icons/icon-192x192.png",
+    icon: `/logo.ico?v=${BRAND_ASSET_VERSION}`,
+    shortcut: `/logo.ico?v=${BRAND_ASSET_VERSION}`,
+    apple: `/icons/icon-192x192.png?v=${BRAND_ASSET_VERSION}`,
   },
   appleWebApp: {
     capable: true,
@@ -68,7 +69,7 @@ export default async function RootLayout({
     <html lang={locale} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" href={`/icons/icon-192x192.png?v=${BRAND_ASSET_VERSION}`} />
 
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

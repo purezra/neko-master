@@ -14,7 +14,8 @@
     "export": "导出数据",
     "health": "健康",
     "settings": "设置",
-    "showcaseMode": "演示模式"
+    "showcaseMode": "演示模式",
+    "comparison": "时段对比"
   },
   "header": {
     "title": "Neko Master",
@@ -254,7 +255,29 @@
     "connections": "连接",
     "total": "总计",
     "download": "下载",
-    "upload": "上传"
+    "upload": "上传",
+    "search": "搜索 IP、备注或分组",
+    "noMatches": "没有匹配的设备",
+    "clearFilters": "清除筛选",
+    "trafficError": "设备流量加载失败，请重试。",
+    "allGroups": "全部分组",
+    "ungrouped": "未分组",
+    "group": "分组",
+    "manage": "备注与分组",
+    "address": "设备 IP",
+    "name": "设备备注",
+    "namePlaceholder": "例如：我的电脑、客厅电视",
+    "groupPlaceholder": "例如：家人、客厅、工作设备",
+    "profileHint": "备注按当前网关和 IP 保存。IP 变化后需重新关联；留空保存可清除备注或分组。",
+    "save": "保存",
+    "saving": "保存中…",
+    "saved": "设备备注已保存",
+    "saveError": "保存失败，请重试",
+    "cancel": "取消",
+    "profilesError": "设备备注加载失败",
+    "retry": "重试",
+    "exportFiltered": "导出筛选结果",
+    "matched": "匹配 {count} 台设备，图表最多显示流量最高的 100 台"
   },
   "rules": {
     "title": "规则",
@@ -313,7 +336,13 @@
     "checkNow": "检查",
     "newVersion": "有新版本",
     "goToUpdate": "前往更新",
-    "viewOnGitHub": "在 GitHub 查看"
+    "viewOnGitHub": "在 GitHub 查看",
+    "forkDescription": "基于 Neko Master 的 purezra 维护分支",
+    "latestForkVersion": "Fork 最新发布",
+    "noRelease": "此 Fork 暂无正式发布",
+    "forkRepository": "当前 Fork 仓库",
+    "upstream": "原项目与致谢",
+    "close": "关闭"
   },
   "common": {
     "daysSuffix": "天前",
@@ -668,5 +697,28 @@
     "noBackends": "暂无节点健康记录",
     "noBackendsHint": "系统每分钟自动检查所有已启用的后端节点，检查结果将在此处显示",
     "checkInterval": "系统每分钟记录一次健康检查结果，数据空缺表示采集服务中断"
+  },
+  "comparison": {
+    "title": "时段对比",
+    "description": "比较相同时长的流量，找出增长最多的设备和域名。",
+    "today": "今天 / 昨天",
+    "week": "本周 / 上周",
+    "selected": "所选时段 / 前一时段",
+    "current": "当前时段",
+    "baseline": "对比时段",
+    "rangeHint": "采用已落盘的完整分钟或 UTC 小时桶，结束时间不包含在内。今天和本周与上一周期的相同已过时长比较；数据受保留期限限制。",
+    "noRange": "暂无可比较的完整时间桶，请稍后重试或选择 31 天以内的范围。",
+    "error": "对比数据加载失败，请检查后端连接或数据保留范围。",
+    "retry": "重试",
+    "new": "新增",
+    "traffic": "总流量",
+    "download": "下载",
+    "upload": "上传",
+    "connections": "连接数",
+    "domains": "独立域名",
+    "deviceGrowth": "设备流量增长 Top 10",
+    "domainGrowth": "域名流量增长 Top 10",
+    "rankingHint": "按流量增加值排序，从完整聚合结果中计算。",
+    "noGrowth": "此时段暂无流量增长"
   }
 }

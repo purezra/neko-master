@@ -4,10 +4,25 @@
  * Handles device (source IP) statistics and their domain/IP breakdowns.
  */
 import type Database from 'better-sqlite3';
-import type { DomainStats, IPStats, DeviceStats } from '@neko-master/shared';
+import type { DomainStats, IPStats, DeviceStats, DeviceProfile } from '@neko-master/shared';
 import { BaseRepository } from './base.repository.js';
 
 export class DeviceRepository extends BaseRepository {
+  getProfiles(backendId: number): DeviceProfile[] {
+    return this.db.prepare(`SELECT source_ip AS sourceIP, display_name AS displayName, group_name AS groupName
+      FROM device_profiles WHERE backend_id = ? ORDER BY source_ip`).all(backendId) as DeviceProfile[];
+  }
+
+  saveProfile(backendId: number, profile: DeviceProfile): void {
+    if (!profile.displayName && !profile.groupName) {
+      this.db.prepare('DELETE FROM device_profiles WHERE backend_id = ? AND source_ip = ?').run(backendId, profile.sourceIP);
+      return;
+    }
+    this.db.prepare(`INSERT INTO device_profiles (backend_id, source_ip, display_name, group_name) VALUES (?, ?, ?, ?)
+      ON CONFLICT(backend_id, source_ip) DO UPDATE SET display_name = excluded.display_name, group_name = excluded.group_name`)
+      .run(backendId, profile.sourceIP, profile.displayName, profile.groupName);
+  }
+
   constructor(db: Database.Database) {
     super(db);
   }

@@ -6,6 +6,7 @@
  */
 
 export { BaseRepository } from './base.repository.js';
+export { ComparisonRepository } from './comparison.repository.js';
 export { DomainRepository } from './domain.repository.js';
 export { BackendRepository, type BackendConfig } from './backend.repository.js';
 export { AuthRepository } from './auth.repository.js';

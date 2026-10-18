@@ -8,6 +8,9 @@ import type {
   TrafficTrendPoint,
   ProxyTrafficStats,
   DeviceStats,
+  DeviceProfile,
+  TrafficComparison,
+  ComparisonRange,
 } from "@neko-master/shared";
 import { getAuthHeaders } from "./auth-queries";
 
@@ -235,6 +238,10 @@ function buildUrl(base: string, params: Record<string, string | number | boolean
 }
 
 export const api = {
+  getDeviceProfiles: (backendId: number) => fetchJson<DeviceProfile[]>(buildUrl(`${API_BASE}/stats/devices/profiles`, { backendId })),
+  saveDeviceProfile: (backendId: number, profile: DeviceProfile) => fetchJson<DeviceProfile>(buildUrl(`${API_BASE}/stats/devices/profiles`, { backendId }), "PUT", profile),
+  getTrafficComparison: (backendId: number, current: ComparisonRange, baseline: ComparisonRange) =>
+    fetchJson<TrafficComparison>(buildUrl(`${API_BASE}/stats/comparison`, { backendId, start: current.start, end: current.end, baselineStart: baseline.start, baselineEnd: baseline.end })),
   // Stats APIs with optional backendId parameter
   getSummary: (backendId?: number, range?: TimeRange) => 
     fetchJson<StatsSummary & { backend: { id: number; name: string; isActive: boolean; listening: boolean } }>(

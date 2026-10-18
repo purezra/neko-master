@@ -11,6 +11,7 @@ import {
   TimeseriesRepository,
   CountryRepository,
   DeviceRepository,
+  ComparisonRepository,
   ProxyRepository,
   RuleRepository,
   IPRepository,
@@ -94,6 +95,7 @@ export class StatsDatabase {
     timeseries: TimeseriesRepository;
     country: CountryRepository;
     device: DeviceRepository;
+    comparison: ComparisonRepository;
     proxy: ProxyRepository;
     rule: RuleRepository;
     ip: IPRepository;
@@ -115,6 +117,7 @@ export class StatsDatabase {
       timeseries: new TimeseriesRepository(this.db),
       country: new CountryRepository(this.db),
       device: new DeviceRepository(this.db),
+      comparison: new ComparisonRepository(this.db),
       proxy: new ProxyRepository(this.db),
       rule: new RuleRepository(this.db),
       ip: new IPRepository(this.db),

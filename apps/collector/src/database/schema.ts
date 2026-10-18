@@ -6,6 +6,17 @@
  */
 
 export const SCHEMA = {
+  // User metadata, retained independently of traffic retention. Never written by probes.
+  DEVICE_PROFILES: `
+    CREATE TABLE IF NOT EXISTS device_profiles (
+      backend_id INTEGER NOT NULL,
+      source_ip TEXT NOT NULL,
+      display_name TEXT NOT NULL DEFAULT '',
+      group_name TEXT NOT NULL DEFAULT '',
+      PRIMARY KEY (backend_id, source_ip),
+      FOREIGN KEY (backend_id) REFERENCES backend_configs(id) ON DELETE CASCADE
+    );
+  `,
   // Domain statistics - aggregated by domain per backend
   DOMAIN_STATS: `
     CREATE TABLE IF NOT EXISTS domain_stats (
@@ -556,6 +567,7 @@ export function getAllSchemaStatements(): string[] {
     SCHEMA.RULE_DOMAIN_TRAFFIC,
     SCHEMA.RULE_IP_TRAFFIC,
     SCHEMA.BACKEND_CONFIGS,
+    SCHEMA.DEVICE_PROFILES,
     SCHEMA.AGENT_HEARTBEATS,
     SCHEMA.AGENT_SNAPSHOTS,
     SCHEMA.BACKEND_HEALTH_LOGS,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import {
   getThemeChartColors,
@@ -16,6 +16,10 @@ export interface ThemePaletteState {
   chartColors: string[];
 }
 
+const subscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 /**
  * Active color palette + chart series colors.
  *
@@ -24,15 +28,18 @@ export interface ThemePaletteState {
  */
 export function useThemePalette(): ThemePaletteState {
   const { theme, systemTheme, forcedTheme } = useTheme();
+  const hydrated = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
 
   return useMemo(() => {
-    const palette = resolveThemePalette(forcedTheme ?? theme, systemTheme);
+    // SSR and the first hydration render must agree, even when localStorage
+    // already contains a light theme. Resolve the saved theme after hydration.
+    const palette = resolveThemePalette(hydrated ? forcedTheme ?? theme : undefined, hydrated ? systemTheme : undefined);
     return {
       palette,
       isDark: palette.mode === "dark",
       chartColors: getThemeChartColors(palette),
     };
-  }, [theme, systemTheme, forcedTheme]);
+  }, [theme, systemTheme, forcedTheme, hydrated]);
 }
 
 /** Cycle through the palette's series colors. */

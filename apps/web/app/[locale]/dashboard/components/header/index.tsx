@@ -39,6 +39,7 @@ import { Switch } from "@/components/ui/switch";
 import { TimeRangePicker, LanguageSwitcher, ThemeToggle, ClientOnly } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { THEME_PALETTES } from "@/lib/theme-palettes";
+import { LOGO_URL } from "@/lib/project-info";
 import type { TimeRange } from "@/lib/api";
 import type { BackendStatus, TabId, TimePreset } from "@/lib/types/dashboard";
 
@@ -164,7 +165,7 @@ export function Header({
           <div className="flex items-center gap-2">
             <div className="lg:hidden w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
               <Image
-                src="/logo.png"
+                src={LOGO_URL}
                 alt="Neko Master"
                 width={32}
                 height={32}

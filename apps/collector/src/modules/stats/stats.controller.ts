@@ -2,9 +2,11 @@
  * Stats Controller - Fastify routes for /api/stats
  */
 
+import { isIP } from 'node:net';
 import type { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import type { StatsService } from './stats.service.js';
 import type { TimeRange } from './stats.types.js';
+import type { DeviceProfile } from '@neko-master/shared';
 
 // Extend Fastify instance to include statsService
 declare module 'fastify' {
@@ -107,6 +109,42 @@ function getTimeRange(request: FastifyRequest, reply: FastifyReply, isShowcaseMo
 
 const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Promise<void> => {
   const service = fastify.statsService;
+
+  fastify.get('/devices/profiles', async (request, reply) => {
+    const id = getBackendId(request, service);
+    const profiles = id === null ? null : service.getDeviceProfiles(id);
+    if (profiles === null) return reply.status(404).send({ error: 'Backend not found' });
+    return profiles;
+  });
+
+  fastify.put('/devices/profiles', { schema: { body: {
+    type: 'object', required: ['sourceIP', 'displayName', 'groupName'], additionalProperties: false,
+    properties: { sourceIP: { type: 'string', maxLength: 64 }, displayName: { type: 'string', maxLength: 80 }, groupName: { type: 'string', maxLength: 40 } },
+  } } }, async (request, reply) => {
+    if (fastify.authService.isShowcaseMode()) return reply.status(403).send({ error: 'Read-only showcase mode' });
+    const id = getBackendId(request, service);
+    if (id === null || service.getDeviceProfiles(id) === null) return reply.status(404).send({ error: 'Backend not found' });
+    const body = request.body as DeviceProfile;
+    const sourceIP = body.sourceIP.trim();
+    if (!isIP(sourceIP)) return reply.status(400).send({ error: 'Invalid device IP' });
+    return service.saveDeviceProfile(id, { sourceIP, displayName: body.displayName.trim(), groupName: body.groupName.trim() });
+  });
+
+  fastify.get('/comparison', async (request, reply) => {
+    const id = getBackendId(request, service);
+    if (id === null) return reply.status(404).send({ error: 'Backend not found' });
+    const query = request.query as Record<string, string>;
+    if (fastify.authService.isShowcaseMode() && [query.start, query.baselineStart].some(start => Date.parse(start) < Date.now() - 86400000)) {
+      return reply.status(400).send({ error: 'Showcase history is limited to 24 hours' });
+    }
+    try {
+      return await service.getTrafficComparisonWithRouting(id, { start: query.start, end: query.end }, { start: query.baselineStart, end: query.baselineEnd });
+    } catch (error: unknown) {
+      if (error instanceof RangeError) return reply.status(400).send({ error: error.message });
+      if (error instanceof Error && error.message === 'Backend not found') return reply.status(404).send({ error: error.message });
+      throw error;
+    }
+  });
 
   // Get summary statistics for a specific backend
   fastify.get('/summary', async (request, reply) => {

@@ -3,17 +3,17 @@
 import { useState, memo } from "react";
 import { useTranslations } from "next-intl";
 import {
-  keepPreviousData,
   useQuery,
 } from "@tanstack/react-query";
 import { BarChart3, Link2 } from "lucide-react";
 import { StatsCards, TopDomainsChart } from "@/components/features/stats";
 import { OverviewTab } from "@/components/overview";
 import { InteractiveProxyStats } from "@/components/features/proxies";
-import { InteractiveDeviceStats } from "@/components/features/devices";
+import { DeviceView } from "@/components/features/devices";
 import { InteractiveRuleStats } from "@/components/features/rules";
 import { HealthContent } from "@/components/features/health";
 import { ExportContent } from "@/components/features/export";
+import { ComparisonContent } from "@/components/features/stats/comparison-content";
 import { WorldTrafficMap, CountryTrafficList } from "@/components/features/countries";
 import { DomainsTable, IPsTable } from "@/components/features/stats/table";
 import { Button } from "@/components/ui/button";
@@ -270,29 +270,32 @@ const RulesContent = memo(function RulesContent({
 
 // Devices Content Component
 const DevicesContent = memo(function DevicesContent({
-  data,
   activeBackendId,
   timeRange,
   backendStatus,
   autoRefresh,
 }: {
-  data?: DeviceStats[];
   activeBackendId?: number;
   timeRange: TimeRange;
   backendStatus: BackendStatus;
   autoRefresh: boolean;
 }) {
   const stableTimeRange = useStableTimeRange(timeRange, { roundToMinute: true });
+  const t = useTranslations("devices");
 
   const devicesQuery = useQuery({
-    queryKey: getDevicesQueryKey(activeBackendId, 50, stableTimeRange),
-    queryFn: () => api.getDevices(activeBackendId, 50, stableTimeRange),
-    enabled: !data && !!activeBackendId,
-    placeholderData: keepPreviousData,
+    queryKey: getDevicesQueryKey(activeBackendId, 2000, stableTimeRange),
+    queryFn: () => api.getDevices(activeBackendId, 2000, stableTimeRange),
+    enabled: !!activeBackendId,
+    refetchInterval: autoRefresh ? 5000 : false,
   });
 
-  const deviceStats: DeviceStats[] = data ?? devicesQuery.data ?? [];
-  const loading = !data && devicesQuery.isLoading && !devicesQuery.data;
+  const deviceStats: DeviceStats[] = devicesQuery.data ?? [];
+  const loading = devicesQuery.isLoading && !devicesQuery.data;
+
+  if (devicesQuery.isError) {
+    return <Card><CardContent className="flex items-center justify-between gap-3 p-5" role="alert"><p className="text-sm text-destructive">{t("trafficError")}</p><Button variant="outline" onClick={() => void devicesQuery.refetch()}>{t("retry")}</Button></CardContent></Card>;
+  }
 
   if (loading) {
     return (
@@ -306,7 +309,8 @@ const DevicesContent = memo(function DevicesContent({
 
   return (
     <div className="space-y-6">
-      <InteractiveDeviceStats
+      <DeviceView
+        key={activeBackendId}
         data={deviceStats}
         activeBackendId={activeBackendId}
         timeRange={timeRange}
@@ -394,7 +398,6 @@ export function Content({
       case "devices":
         return (
           <DevicesContent
-            data={data?.deviceStats}
             activeBackendId={activeBackendId}
             timeRange={timeRange}
             backendStatus={backendStatus}
@@ -411,6 +414,8 @@ export function Content({
             backendStatus={backendStatus}
           />
         );
+      case "comparison":
+        return <ComparisonContent key={activeBackendId} activeBackendId={activeBackendId} timeRange={timeRange} autoRefresh={autoRefresh} />;
       case "network":
         return <NetworkContent />;
       case "health":

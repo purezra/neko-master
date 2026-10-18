@@ -22,6 +22,13 @@ const API_DESTINATION = apiUrl.endsWith('/api')
 // Base Next.js config
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  images: {
+    localPatterns: [
+      { pathname: "/**", search: "" },
+      // The page logo uses a version query to refresh cached fork branding.
+      { pathname: "/logo.png" },
+    ],
+  },
   output: 'standalone',
   outputFileTracingRoot: join(__dirname, '../..'),
   env: {

@@ -99,7 +99,46 @@ export interface ProxyStats {
   lastSeen: string;
 }
 
+export interface DeviceProfile {
+  sourceIP: string;
+  displayName: string;
+  groupName: string;
+}
+
+export interface ComparisonRange {
+  start: string;
+  /** Exclusive end. */
+  end: string;
+}
+
+export interface TrafficComparisonRow {
+  key: string;
+  currentBytes: number;
+  baselineBytes: number;
+  displayName?: string;
+  groupName?: string;
+}
+
+export interface TrafficComparisonTotals {
+  totalUpload: number;
+  totalDownload: number;
+  totalConnections: number;
+  uniqueDomains: number;
+  uniqueIPs: number;
+}
+
+export interface TrafficComparison {
+  currentRange: ComparisonRange;
+  baselineRange: ComparisonRange;
+  current: TrafficComparisonTotals;
+  baseline: TrafficComparisonTotals;
+  domains: TrafficComparisonRow[];
+  devices: TrafficComparisonRow[];
+}
+
 export interface DeviceStats {
+  displayName?: string;
+  groupName?: string;
   sourceIP: string;
   totalUpload: number;
   totalDownload: number;

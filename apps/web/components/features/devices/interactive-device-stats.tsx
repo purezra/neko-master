@@ -100,8 +100,9 @@ export function InteractiveDeviceStats({
   const chartData = useMemo(() => {
     if (!data) return [];
     return data.map((device, index) => ({
-      name: device.sourceIP,
+      name: device.displayName || device.sourceIP,
       rawName: device.sourceIP,
+      groupName: device.groupName,
       value: device.totalDownload + device.totalUpload,
       download: device.totalDownload,
       upload: device.totalUpload,
@@ -388,8 +389,10 @@ export function InteractiveDeviceStats({
                         </span>
                         <span
                           className="flex-1 text-sm font-medium truncate min-w-0"
-                          title={item.name}>
+                          title={`${item.name} · ${item.rawName}`}>
                           {item.name}
+                          {item.name !== item.rawName && <span className="ml-2 text-xs text-muted-foreground">{item.rawName}</span>}
+                          {item.groupName && <span className="ml-2 text-xs text-primary">{item.groupName}</span>}
                         </span>
                         <span className="text-sm font-bold tabular-nums shrink-0 whitespace-nowrap ml-auto">
                           {formatBytes(item.value)}
