@@ -12,6 +12,7 @@ import { formatBytes, formatNumber, cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Favicon } from "@/components/common";
 
 export function ComparisonContent({ activeBackendId, timeRange, autoRefresh }: { activeBackendId?: number; timeRange: TimeRange; autoRefresh: boolean }) {
   const t = useTranslations("comparison");
@@ -34,13 +35,17 @@ export function ComparisonContent({ activeBackendId, timeRange, autoRefresh }: {
       <span>({percent === null ? t("new") : `${Math.abs(percent).toFixed(1)}%`})</span>
     </span>;
   };
-  const ranking = (title: string, rows: TrafficComparisonRow[]) => <Card className="min-w-0">
+  const ranking = (title: string, rows: TrafficComparisonRow[], showDomainIcons = false) => <Card className="min-w-0">
     <CardHeader><CardTitle className="text-base">{title}</CardTitle><p className="text-xs text-muted-foreground">{t("rankingHint")}</p></CardHeader>
     <CardContent className="space-y-4">
       {!rows.length && <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{t("noGrowth")}</div>}
       {rows.map((row, index) => <div key={row.key} className="space-y-2">
         <div className="flex items-start justify-between gap-3 text-sm">
-          <div className="min-w-0"><p className="truncate font-medium" title={row.key}>{index + 1}. {row.displayName || row.key}</p>
+          <div className="min-w-0"><div className="flex items-center gap-2">
+            <span className="shrink-0 font-medium">{index + 1}.</span>
+            {showDomainIcons && <Favicon domain={row.key} size="sm" className="shrink-0" />}
+            <p className="min-w-0 break-all font-medium" title={row.key}>{row.displayName || row.key}</p>
+          </div>
             {(row.displayName || row.groupName) && <p className="truncate text-xs text-muted-foreground">{row.key}{row.groupName ? ` · ${row.groupName}` : ""}</p>}
           </div>
           <div className="shrink-0 text-right"><p className="font-medium tabular-nums">{formatBytes(row.currentBytes)}</p>{renderChange(row.currentBytes, row.baselineBytes)}</div>
@@ -71,7 +76,7 @@ export function ComparisonContent({ activeBackendId, timeRange, autoRefresh }: {
       : !data ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" aria-busy="true">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-32 animate-pulse rounded-xl bg-muted" />)}</div>
       : <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{metrics.map(metric => <Card key={metric.key}><CardContent className="space-y-2 p-4"><p className="text-xs text-muted-foreground">{t(metric.key)}</p><p className="text-xl font-semibold tabular-nums">{metric.bytes ? formatBytes(metric.current) : formatNumber(metric.current)}</p><p className="text-xs text-muted-foreground">{t("baseline")}: {metric.bytes ? formatBytes(metric.baseline) : formatNumber(metric.baseline)}</p>{renderChange(metric.current, metric.baseline, metric.bytes)}</CardContent></Card>)}</div>
-        <div className="grid items-start gap-6 lg:grid-cols-2">{ranking(t("deviceGrowth"), data.devices)}{ranking(t("domainGrowth"), data.domains)}</div>
+        <div className="grid items-start gap-6 lg:grid-cols-2">{ranking(t("deviceGrowth"), data.devices)}{ranking(t("domainGrowth"), data.domains, true)}</div>
       </>}
   </div>;
 }

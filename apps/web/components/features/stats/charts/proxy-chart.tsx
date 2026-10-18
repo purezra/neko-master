@@ -143,6 +143,17 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
 
   // Get chart configuration based on topN
   const config = CHART_CONFIG[topN];
+  // Keep room for the bars on narrow screens while allowing every domain to
+  // wrap inside the SVG instead of overflowing past its left edge.
+  const domainAxisWidth = Math.min(320, Math.max(110, containerWidth * 0.4));
+  const domainLabelWidth = domainAxisWidth - 16;
+  // The labels use a monospace font: reserve a little more than its ASCII
+  // advance, and a full em for internationalized domain characters.
+  const longestLabelWidth = Math.max(0, ...domains.map(({ domain }) =>
+    Array.from(domain).reduce((width, char) => width + (char.charCodeAt(0) > 127 ? 11 : 7), 0),
+  ));
+  const rowHeight = Math.max(28, Math.ceil(longestLabelWidth / domainLabelWidth) * 16 + 12);
+  const chartHeight = Math.max(config.height, domains.length * rowHeight + 50);
 
   const chartData = useMemo(() => {
     if (!domains || domains.length === 0) return [];
@@ -167,10 +178,10 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
     if (active && payload && payload.length) {
       const item = payload[0].payload;
       return (
-        <div className="bg-background border border-border p-3 rounded-lg shadow-lg">
+        <div className="max-w-[min(24rem,calc(100vw-2rem))] bg-background border border-border p-3 rounded-lg shadow-lg">
           <div className="flex items-center gap-2 mb-2">
             <Favicon domain={item.fullDomain} size="sm" />
-            <span className="font-medium text-sm text-foreground">
+            <span className="min-w-0 break-all font-medium text-sm text-foreground">
               {item.fullDomain}
             </span>
           </div>
@@ -201,7 +212,7 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
   };
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader className="pb-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -231,8 +242,8 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
       </CardHeader>
       <CardContent ref={containerRef}>
         <div 
-          className="w-full min-w-0 overflow-hidden sm:overflow-visible transition-all duration-500 ease-in-out"
-          style={{ height: `${config.height}px` }}
+          className="w-full min-w-0 transition-all duration-500 ease-in-out"
+          style={{ height: `${chartHeight}px` }}
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
@@ -260,8 +271,18 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
               <YAxis
                 type="category"
                 dataKey="name"
-                width={180}
-                tick={{ fontSize: 11, fill: "currentColor" }}
+                width={domainAxisWidth}
+                tick={({ x, y, payload }) => (
+                  <foreignObject
+                    x={Number(x) - domainAxisWidth + 8}
+                    y={Number(y) - rowHeight / 2}
+                    width={domainLabelWidth}
+                    height={rowHeight}>
+                    <div className="flex h-full items-center justify-end text-right font-mono text-[11px] leading-4 text-foreground">
+                      <span className="min-w-0 break-all" title={String(payload.value)}>{payload.value}</span>
+                    </div>
+                  </foreignObject>
+                )}
                 tickLine={false}
                 axisLine={false}
                 interval={0}
