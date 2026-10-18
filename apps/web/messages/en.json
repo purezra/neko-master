@@ -716,10 +716,15 @@
     "upload": "Upload",
     "connections": "Connections",
     "domains": "Unique domains",
-    "deviceGrowth": "Top 10 device traffic increases",
-    "domainGrowth": "Top 10 domain traffic increases",
-    "rankingHint": "Ranked by additional bytes across the full aggregated dataset.",
-    "noGrowth": "No traffic increases in this period"
+    "deviceGrowth": "Device traffic growth",
+    "domainGrowth": "Domain traffic growth",
+    "rankingHint": "Ranked by additional traffic; bars show relative increases. Only growing items are shown, up to 10.",
+    "noGrowth": "No traffic increases in this period",
+    "domainLabel": "Domain",
+    "summary": "Traffic change summary",
+    "deviceCount": "{count, plural, one {# device} other {# devices}} · up to 10",
+    "increase": "Traffic increase",
+    "domainCount": "{count, plural, one {# domain} other {# domains}} · up to 10"
   },
   "entityTrend": {
     "empty": "No saved traffic for this item in the selected period",

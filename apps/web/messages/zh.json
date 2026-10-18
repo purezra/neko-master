@@ -716,10 +716,15 @@
     "upload": "上传",
     "connections": "连接数",
     "domains": "独立域名",
-    "deviceGrowth": "设备流量增长 Top 10",
-    "domainGrowth": "域名流量增长 Top 10",
-    "rankingHint": "按流量增加值排序，从完整聚合结果中计算。",
-    "noGrowth": "此时段暂无流量增长"
+    "deviceGrowth": "设备流量增长",
+    "domainGrowth": "域名流量增长",
+    "rankingHint": "按流量增加值排序，条形长度表示相对增量。仅展示有增长的条目，最多 10 项。",
+    "noGrowth": "此时段暂无流量增长",
+    "domainLabel": "域名",
+    "summary": "流量变化概览",
+    "deviceCount": "{count} 台设备 · 最多 10 台",
+    "increase": "增加流量",
+    "domainCount": "{count} 个域名 · 最多 10 个"
   },
   "entityTrend": {
     "empty": "所选时段内暂无该条目的流量记录",
