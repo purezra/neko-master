@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Network, ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBytes, formatNumber } from "@/lib/utils";
 import type { RuleStats } from "@neko-master/shared";
@@ -10,11 +11,6 @@ import type { RuleStats } from "@neko-master/shared";
 interface RuleChainChartProps {
   data: RuleStats[];
 }
-
-const COLORS = [
-  "#3B82F6", "#8B5CF6", "#06B6D4", "#10B981", "#F59E0B",
-  "#EF4444", "#EC4899", "#6366F1", "#14B8A6", "#F97316",
-];
 
 function formatRuleName(rule: string): string {
   if (!rule) return "DIRECT";
@@ -62,6 +58,7 @@ function formatProxyName(proxy: string): string {
 
 export function RuleChainChart({ data }: RuleChainChartProps) {
   const t = useTranslations("rules");
+  const { chartColors: COLORS } = useThemePalette();
 
   const rules = useMemo(() => {
     if (!data) return [];
@@ -73,7 +70,7 @@ export function RuleChainChart({ data }: RuleChainChartProps) {
       emoji: getRuleEmoji(rule.rule),
       total: rule.totalUpload + rule.totalDownload,
     }));
-  }, [data]);
+  }, [data, COLORS]);
 
   const totalTraffic = useMemo(() => {
     return rules.reduce((sum, r) => sum + r.total, 0);

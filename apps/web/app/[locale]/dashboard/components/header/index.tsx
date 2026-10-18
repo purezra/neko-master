@@ -12,6 +12,7 @@ import {
   Moon,
   Sun,
   Monitor,
+  Palette,
   MoreVertical,
   Info,
   LogOut,
@@ -37,6 +38,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { TimeRangePicker, LanguageSwitcher, ThemeToggle, ClientOnly } from "@/components/common";
 import { cn } from "@/lib/utils";
+import { THEME_PALETTES } from "@/lib/theme-palettes";
 import type { TimeRange } from "@/lib/api";
 import type { BackendStatus, TabId, TimePreset } from "@/lib/types/dashboard";
 
@@ -512,6 +514,38 @@ export function Header({
                   <Monitor className="w-4 h-4 mr-2 text-slate-500" />
                   {themeT("system")} {theme === "system" && "✓"}
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+
+                {/* Color Palettes */}
+                <DropdownMenuLabel className="flex items-center gap-2">
+                  <Palette className="w-4 h-4" />
+                  {themeT("palettes.title")}
+                </DropdownMenuLabel>
+                {THEME_PALETTES.map((item) => (
+                  <DropdownMenuItem
+                    key={item.id}
+                    onClick={() => onThemeChange(item.id)}
+                    className={theme === item.id ? "bg-muted" : ""}
+                  >
+                    <span className="flex shrink-0 -space-x-1 mr-2">
+                      <span
+                        className="h-3.5 w-3.5 rounded-full border border-black/10 dark:border-white/20"
+                        style={{ backgroundColor: item.colors.base }}
+                      />
+                      <span
+                        className="h-3.5 w-3.5 rounded-full border border-black/10 dark:border-white/20"
+                        style={{ backgroundColor: item.colors[item.accent] }}
+                      />
+                    </span>
+                    {themeT(`palettes.${item.id}`)}
+                    <span className="ml-auto text-[10px] uppercase text-muted-foreground">
+                      {item.mode === "dark"
+                        ? themeT("modeDark")
+                        : themeT("modeLight")}
+                    </span>
+                    {theme === item.id && "✓"}
+                  </DropdownMenuItem>
+                ))}
                 <DropdownMenuSeparator />
 
                 {/* Language Selection */}

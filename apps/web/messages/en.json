@@ -11,6 +11,7 @@
     "proxies": "Proxies",
     "rules": "Rules",
     "network": "Network",
+    "export": "Export Data",
     "health": "Health",
     "settings": "Settings",
     "showcaseMode": "Showcase Mode"
@@ -344,7 +345,17 @@
     "toggle": "Toggle theme",
     "light": "Light",
     "dark": "Dark",
-    "system": "System"
+    "system": "System",
+    "palettes": {
+      "title": "Color themes",
+      "mocha": "Catppuccin Mocha",
+      "macchiato": "Catppuccin Macchiato",
+      "frappe": "Catppuccin Frappé",
+      "latte": "Catppuccin Latte",
+      "dracula": "Dracula"
+    },
+    "modeDark": "Dark",
+    "modeLight": "Light"
   },
   "language": {
     "select": "Select language",
@@ -541,6 +552,92 @@
       "emergencyResetTitle": "Confirm Token Reset",
       "emergencyResetDescription": "You are currently in Emergency Access Mode. After resetting the token, the old one will be invalid.",
       "emergencyResetWarning": "For your security, please remove the backend environment variable FORCE_ACCESS_CONTROL_OFF and restart the service after the reset is complete."
+    }
+  },
+  "export": {
+    "title": "Export Data",
+    "description": "Pick a time range and datasets, then export traffic analytics as JSON, CSV, or Excel.",
+    "currentRange": "Current range: {start} ~ {end}",
+    "rangeHint": "Changing the time range reloads the data below automatically",
+    "backendUnavailable": "No gateway data is available right now — the export may be empty.",
+    "datasets": {
+      "title": "Export Content",
+      "selectAll": "Select all",
+      "clearAll": "Clear all",
+      "rowCount": "{count} rows",
+      "loading": "Loading…",
+      "items": {
+        "summary": {
+          "label": "Summary",
+          "description": "Total traffic, connections, unique domains/IPs and key metrics"
+        },
+        "domains": {
+          "label": "Top Domains",
+          "description": "Top domains by total traffic with their rules and proxies"
+        },
+        "ips": {
+          "label": "Top IPs",
+          "description": "Top IP addresses with geo location and AS organization"
+        },
+        "rules": {
+          "label": "Top Rules",
+          "description": "Traffic matched by each rule and its final proxy"
+        },
+        "countries": {
+          "label": "Top Regions",
+          "description": "Traffic distribution aggregated by country/region"
+        },
+        "proxies": {
+          "label": "Top Proxies",
+          "description": "Download, upload and connections per proxy node"
+        },
+        "devices": {
+          "label": "Device Usage",
+          "description": "Traffic usage of each device on the local network"
+        }
+      }
+    },
+    "topN": {
+      "label": "Top N",
+      "hint": "Export at most the first {count} records per dataset"
+    },
+    "format": {
+      "title": "Format",
+      "options": {
+        "json": {
+          "label": "JSON",
+          "description": "Structured data for programmatic use"
+        },
+        "csv": {
+          "label": "CSV",
+          "description": "Plain-text tables for other tools"
+        },
+        "xlsx": {
+          "label": "Excel (xlsx)",
+          "description": "Multi-sheet workbook with styled headers"
+        }
+      }
+    },
+    "summaryLine": "{datasets} datasets selected, {rows} rows in total",
+    "exportButton": "Export file",
+    "exporting": "Generating…",
+    "loadingData": "Loading statistics…",
+    "readyHint": "Data is ready — click the button above to download",
+    "emptySelection": "Select at least one dataset",
+    "loadError": "Failed to load statistics",
+    "retry": "Retry",
+    "privacyHint": "Files are generated locally in your browser and never uploaded.",
+    "toast": {
+      "successTitle": "Export complete",
+      "successDescription": "{file} is downloading",
+      "errorTitle": "Export failed"
+    },
+    "history": {
+      "lastExportEnd": "Last export ended at {end}",
+      "suggestion": "You can continue this export from {end}",
+      "meta": "Exported {time} · {rows} rows",
+      "continueAction": "Continue from here",
+      "dismiss": "Dismiss"
     }
   },
   "health": {

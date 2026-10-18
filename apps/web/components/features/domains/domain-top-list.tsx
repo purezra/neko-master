@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Globe, Link2, ArrowUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { OverviewCard } from "@/components/common";
 import { TopListItem } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,6 @@ interface DomainTopListProps {
 
 type SortBy = "traffic" | "connections";
 
-const COLORS = [
-  "#3B82F6", "#8B5CF6", "#06B6D4", "#10B981", "#F59E0B", 
-  "#EF4444", "#EC4899", "#6366F1"
-];
-
 function getInitials(domain: string): string {
   return domain.charAt(0).toUpperCase();
 }
@@ -30,6 +26,7 @@ function getInitials(domain: string): string {
 export function DomainTopList({ data, limit = 7, onViewAll }: DomainTopListProps) {
   const [sortBy, setSortBy] = useState<SortBy>("traffic");
   const t = useTranslations("topDomains");
+  const { chartColors: COLORS } = useThemePalette();
   const proxiesT = useTranslations("proxies");
   const { settings } = useSettings();
   const faviconDisabled = settings.faviconProvider === "off";
@@ -57,7 +54,7 @@ export function DomainTopList({ data, limit = 7, onViewAll }: DomainTopListProps
     const totalC = list.reduce((sum, d) => sum + d.totalConnections, 0);
     
     return { domains: list, totalTraffic: totalT, totalConnections: totalC };
-  }, [data, limit, sortBy]);
+  }, [data, limit, sortBy, COLORS]);
 
   const toggleSort = () => {
     setSortBy(prev => prev === "traffic" ? "connections" : "traffic");

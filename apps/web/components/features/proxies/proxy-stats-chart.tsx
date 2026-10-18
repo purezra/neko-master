@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Server, Link2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBytes, formatNumber, cn } from "@/lib/utils";
 import { useIsWindows } from "@/lib/hooks/use-is-windows";
@@ -12,19 +13,6 @@ import type { ProxyStats } from "@neko-master/shared";
 interface ProxyStatsChartProps {
   data: ProxyStats[];
 }
-
-const COLORS = [
-  "#3B82F6",
-  "#8B5CF6",
-  "#06B6D4",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#EC4899",
-  "#6366F1",
-  "#14B8A6",
-  "#F97316",
-];
 
 // Format proxy name for display
 function formatProxyName(name: string): string {
@@ -39,6 +27,7 @@ function formatProxyName(name: string): string {
 
 export function ProxyStatsChart({ data }: ProxyStatsChartProps) {
   const t = useTranslations("proxies");
+  const { chartColors: COLORS } = useThemePalette();
   const isWindows = useIsWindows();
 
   const chartData = useMemo(() => {
@@ -52,7 +41,7 @@ export function ProxyStatsChart({ data }: ProxyStatsChartProps) {
       connections: proxy.totalConnections,
       color: COLORS[index % COLORS.length],
     }));
-  }, [data]);
+  }, [data, COLORS]);
 
   const totalTraffic = useMemo(() => {
     return chartData.reduce((sum, item) => sum + item.value, 0);

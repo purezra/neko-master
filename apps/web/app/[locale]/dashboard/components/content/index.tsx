@@ -13,6 +13,7 @@ import { InteractiveProxyStats } from "@/components/features/proxies";
 import { InteractiveDeviceStats } from "@/components/features/devices";
 import { InteractiveRuleStats } from "@/components/features/rules";
 import { HealthContent } from "@/components/features/health";
+import { ExportContent } from "@/components/features/export";
 import { WorldTrafficMap, CountryTrafficList } from "@/components/features/countries";
 import { DomainsTable, IPsTable } from "@/components/features/stats/table";
 import { Button } from "@/components/ui/button";
@@ -42,8 +43,10 @@ interface ContentProps {
   timePreset: TimePreset;
   autoRefresh: boolean;
   activeBackendId?: number;
+  activeBackendName: string;
   backendStatus: BackendStatus;
   onNavigate?: (tab: string) => void;
+  onTimeRangeChange?: (range: TimeRange, preset: TimePreset) => void;
   isLoading?: boolean;
   isTransitioning?: boolean;
 }
@@ -337,8 +340,10 @@ export function Content({
   timePreset,
   autoRefresh,
   activeBackendId,
+  activeBackendName,
   backendStatus,
   onNavigate,
+  onTimeRangeChange,
   isTransitioning,
 }: ContentProps) {
   const renderContent = () => {
@@ -394,6 +399,16 @@ export function Content({
             timeRange={timeRange}
             backendStatus={backendStatus}
             autoRefresh={autoRefresh}
+          />
+        );
+      case "export":
+        return (
+          <ExportContent
+            timeRange={timeRange}
+            onTimeRangeChange={onTimeRangeChange ?? (() => {})}
+            activeBackendId={activeBackendId}
+            activeBackendName={activeBackendName}
+            backendStatus={backendStatus}
           />
         );
       case "network":

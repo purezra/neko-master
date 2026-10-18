@@ -19,5 +19,6 @@ export type TabId =
   | "devices"
   | "proxies"
   | "rules"
+  | "export"
   | "network"
   | "health";

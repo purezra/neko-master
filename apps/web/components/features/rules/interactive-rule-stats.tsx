@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef, startTransition } from "react";
 import { BarChart3, Link2, Waypoints } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { useQueryClient } from "@tanstack/react-query";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell as BarCell, LabelList } from "recharts";
@@ -38,16 +39,6 @@ interface InteractiveRuleStatsProps {
   backendStatus?: "healthy" | "unhealthy" | "unknown";
   autoRefresh?: boolean;
 }
-
-const COLORS = [
-  "#3B82F6", "#8B5CF6", "#06B6D4", "#10B981", "#F59E0B",
-  "#EF4444", "#EC4899", "#6366F1", "#14B8A6", "#F97316",
-];
-
-const CHART_COLORS = [
-  "#3B82F6", "#8B5CF6", "#06B6D4", "#10B981", "#F59E0B",
-  "#EF4444", "#EC4899", "#6366F1", "#14B8A6", "#F97316",
-];
 
 const RULE_DETAIL_WS_MIN_PUSH_MS = 5_000;
 
@@ -122,6 +113,7 @@ export function InteractiveRuleStats({
   autoRefresh = true,
 }: InteractiveRuleStatsProps) {
   const t = useTranslations("rules");
+  const { chartColors: COLORS, chartColors: CHART_COLORS } = useThemePalette();
   const domainsT = useTranslations("domains");
   const ipsT = useTranslations("ips");
   const backendT = useTranslations("dashboard");
@@ -223,7 +215,7 @@ export function InteractiveRuleStats({
     }
 
     return trafficItems;
-  }, [rulesData, gatewayRules]);
+  }, [rulesData, gatewayRules, COLORS]);
 
   const totalTraffic = useMemo(() => {
     return chartData.reduce((sum, item) => sum + item.value, 0);
@@ -329,7 +321,7 @@ export function InteractiveRuleStats({
         connections: domain.totalConnections,
         color: CHART_COLORS[index % CHART_COLORS.length],
       }));
-  }, [ruleDomains, topDomainsWidth]);
+  }, [ruleDomains, topDomainsWidth, CHART_COLORS]);
 
   const isBackendUnavailable = backendStatus === "unhealthy";
   const emptyHint = isBackendUnavailable

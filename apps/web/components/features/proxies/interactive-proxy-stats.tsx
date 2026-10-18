@@ -23,7 +23,8 @@ import { useProxies, useProxyDomains, useProxyIPs } from "@/hooks/api/use-proxie
 import { Favicon } from "@/components/common";
 import { DomainStatsTable, IPStatsTable } from "@/components/features/stats/table";
 import { InsightChartSkeleton, InsightThreePanelSkeleton } from "@/components/ui/insight-skeleton";
-import { COLORS, type PageSize } from "@/lib/stats-utils";
+import { type PageSize } from "@/lib/stats-utils";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import type { ProxyStats, StatsSummary } from "@neko-master/shared";
 
 interface InteractiveProxyStatsProps {
@@ -99,6 +100,7 @@ export function InteractiveProxyStats({
   autoRefresh = true,
 }: InteractiveProxyStatsProps) {
   const t = useTranslations("proxies");
+  const { chartColors: COLORS } = useThemePalette();
   const domainsT = useTranslations("domains");
   const backendT = useTranslations("dashboard");
   const queryClient = useQueryClient();
@@ -235,7 +237,7 @@ export function InteractiveProxyStats({
         connections: d.totalConnections,
         color: COLORS[i % COLORS.length],
       }));
-  }, [proxyDomains, topDomainsWidth]);
+  }, [proxyDomains, topDomainsWidth, COLORS]);
 
   const isBackendUnavailable = backendStatus === "unhealthy";
   const emptyHint = isBackendUnavailable

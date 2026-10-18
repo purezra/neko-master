@@ -10,7 +10,7 @@ import {
 import { scaleLinear } from "d3-scale";
 import { Globe, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useTheme } from "next-themes";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBytes, formatNumber } from "@/lib/utils";
 import { useCountryName } from "@/lib/i18n-country";
@@ -47,26 +47,25 @@ const COUNTRY_NAME_MAPPING: Record<string, string> = {
   // Add more mappings as needed
 };
 
-// Map colors are inline SVG values, so both themes are defined here instead
-// of Tailwind classes. Dark ramps from deep indigo to bright indigo so high
-// traffic pops on the dark background.
-const MAP_THEME = {
-  light: {
-    noData: "#f1f5f9",
-    stroke: "#cbd5e1",
-    scale: ["#e0e7ff", "#818cf8", "#6366f1", "#4f46e5"],
-  },
-  dark: {
-    noData: "#1e2536",
-    stroke: "rgba(148, 163, 184, 0.18)",
-    scale: ["#312e81", "#4f46e5", "#818cf8", "#c7d2fe"],
-  },
-} as const;
-
 export function WorldTrafficMap({ data }: WorldTrafficMapProps) {
   const t = useTranslations("map");
-  const { resolvedTheme } = useTheme();
-  const mapTheme = resolvedTheme === "dark" ? MAP_THEME.dark : MAP_THEME.light;
+  const { palette } = useThemePalette();
+  // Map colors are inline SVG values, so the ramp is derived from the active
+  // palette instead of Tailwind classes.
+  const mapTheme = useMemo(() => {
+    const { colors } = palette;
+    return palette.mode === "dark"
+      ? {
+          noData: colors.surface0,
+          stroke: colors.surface1,
+          scale: [colors.surface2, colors.blue, colors.mauve, colors.lavender],
+        }
+      : {
+          noData: colors.surface0,
+          stroke: colors.surface2,
+          scale: [colors.surface1, colors.lavender, colors.blue, colors.mauve],
+        };
+  }, [palette]);
   const countryName = useCountryName();
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
   const [tooltipData, setTooltipData] = useState<{

@@ -5,6 +5,8 @@ import { Link2 } from "lucide-react";
 import { CountryFlag } from "./country-flag";
 import { formatBytes, formatNumber } from "@/lib/utils";
 import { useCountryName } from "@/lib/i18n-country";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
+import { getContinentColor } from "@/lib/continent-colors";
 import type { CountryStats } from "@neko-master/shared";
 
 interface CountryTrafficListProps {
@@ -12,29 +14,19 @@ interface CountryTrafficListProps {
   sortBy?: "traffic" | "connections";
 }
 
-// Continent colors
-const CONTINENT_COLORS: Record<string, string> = {
-  AS: "#F59E0B", NA: "#3B82F6", EU: "#8B5CF6",
-  SA: "#10B981", AF: "#EF4444", OC: "#06B6D4",
-  LOCAL: "#6B7280", Unknown: "#9CA3AF",
-};
-
-function getContinentColor(continent: string): string {
-  return CONTINENT_COLORS[continent] || CONTINENT_COLORS.Unknown;
-}
-
 export function CountryTrafficList({
   data,
   sortBy = "traffic",
 }: CountryTrafficListProps) {
   const countryName = useCountryName();
+  const { palette } = useThemePalette();
   const countries = useMemo(() => {
     if (!data) return [];
     return data
       .filter(c => c.country !== "LOCAL" && c.country !== "Unknown")
       .map((country) => ({
         ...country,
-        color: getContinentColor(country.continent),
+        color: getContinentColor(country.continent, palette),
         total: country.totalDownload + country.totalUpload,
       }))
       .sort((a, b) => {
@@ -43,7 +35,7 @@ export function CountryTrafficList({
         }
         return b.total - a.total;
       });
-  }, [data, sortBy]);
+  }, [data, sortBy, palette]);
 
   const totalTraffic = useMemo(() => {
     return countries.reduce((sum, c) => sum + c.total, 0);

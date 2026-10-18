@@ -31,7 +31,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn, formatBytes, formatNumber } from "@/lib/utils";
-import { useTheme } from "next-themes";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { api, type TimeRange } from "@/lib/api";
 import { useStatsWebSocket } from "@/lib/websocket";
 import { useStableTimeRange } from "@/lib/hooks/use-stable-time-range";
@@ -554,9 +554,9 @@ function FlowRenderer({
   onToggleFullscreen: () => void;
 }) {
   const { fitView } = useReactFlow();
-  const { resolvedTheme } = useTheme();
+  const { palette } = useThemePalette();
   const t = useTranslations("rules");
-  const isDark = resolvedTheme === "dark";
+  const isDark = palette.mode === "dark";
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const isFirstRender = useRef(true);
@@ -893,7 +893,7 @@ function FlowRenderer({
       panOnScroll={false}
       zoomOnDoubleClick={true}
       className="chain-flow-graph">
-      <Background color={isDark ? "#374151" : "#e5e7eb"} gap={20} size={1} />
+      <Background color={palette.colors.surface1} gap={20} size={1} />
       <Controls showInteractive={false} showFitView={false}>
         <ControlButton
           onClick={onToggleFullscreen}

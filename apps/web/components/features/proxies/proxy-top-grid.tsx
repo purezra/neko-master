@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Server, Link2, ArrowUpDown, ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,15 +22,6 @@ interface ProxyTopGridProps {
 }
 
 type SortBy = "traffic" | "connections";
-
-const COLORS = [
-  "#3B82F6",
-  "#8B5CF6",
-  "#06B6D4",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-];
 
 function normalizeProxyName(name: string): string {
   const normalized = name.replace(/^\["?/, "").replace(/"?\]$/, "").trim();
@@ -60,6 +52,7 @@ export function ProxyTopGrid({
 }: ProxyTopGridProps) {
   const [sortBy, setSortBy] = useState<SortBy>("traffic");
   const t = useTranslations("topProxies");
+  const { chartColors: COLORS } = useThemePalette();
   const proxiesT = useTranslations("proxies");
   const isWindows = useIsWindows();
 
@@ -82,7 +75,7 @@ export function ProxyTopGrid({
       displayName: formatProxyName(p.chain),
       countryCode: getProxyCountryCode(p.chain),
     }));
-  }, [data, limit, sortBy]);
+  }, [data, limit, sortBy, COLORS]);
 
   const toggleSort = () =>
     setSortBy((prev) => (prev === "traffic" ? "connections" : "traffic"));

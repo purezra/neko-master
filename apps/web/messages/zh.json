@@ -11,6 +11,7 @@
     "proxies": "代理",
     "rules": "规则",
     "network": "网络",
+    "export": "导出数据",
     "health": "健康",
     "settings": "设置",
     "showcaseMode": "演示模式"
@@ -344,7 +345,17 @@
     "toggle": "切换主题",
     "light": "浅色",
     "dark": "深色",
-    "system": "跟随系统"
+    "system": "跟随系统",
+    "palettes": {
+      "title": "配色主题",
+      "mocha": "Catppuccin Mocha",
+      "macchiato": "Catppuccin Macchiato",
+      "frappe": "Catppuccin Frappé",
+      "latte": "Catppuccin Latte",
+      "dracula": "Dracula"
+    },
+    "modeDark": "深色",
+    "modeLight": "浅色"
   },
   "language": {
     "select": "选择语言",
@@ -541,6 +552,92 @@
       "emergencyResetTitle": "确认重置访问令牌",
       "emergencyResetDescription": "当前处于紧急访问模式。重置密码后，旧的令牌将失效。",
       "emergencyResetWarning": "为了您的面板安全，请在重置完成后，务必删除后端环境变量 FORCE_ACCESS_CONTROL_OFF 并重启服务。"
+    }
+  },
+  "export": {
+    "title": "导出数据",
+    "description": "选择时间段与数据项，将流量统计导出为 JSON、CSV 或 Excel 文件。",
+    "currentRange": "当前时间段：{start} ~ {end}",
+    "rangeHint": "修改时间段后，下方数据会自动重新加载",
+    "backendUnavailable": "当前没有可用的网关数据，导出内容可能为空。",
+    "datasets": {
+      "title": "导出内容",
+      "selectAll": "全选",
+      "clearAll": "取消全选",
+      "rowCount": "{count} 行",
+      "loading": "加载中…",
+      "items": {
+        "summary": {
+          "label": "汇总",
+          "description": "总流量、连接数、独立域名/IP 等核心指标"
+        },
+        "domains": {
+          "label": "Top 域名",
+          "description": "按总流量排序的热门域名及规则、代理归属"
+        },
+        "ips": {
+          "label": "Top IP",
+          "description": "热门 IP 地址及地理位置、AS 组织信息"
+        },
+        "rules": {
+          "label": "Top 规则",
+          "description": "规则命中流量与最终出口代理"
+        },
+        "countries": {
+          "label": "Top 地区",
+          "description": "按国家/地区汇总的流量分布"
+        },
+        "proxies": {
+          "label": "Top 代理",
+          "description": "各代理节点的下载、上传与连接数"
+        },
+        "devices": {
+          "label": "设备使用统计",
+          "description": "局域网内各设备的流量使用情况"
+        }
+      }
+    },
+    "topN": {
+      "label": "Top 数量",
+      "hint": "每个数据项最多导出前 {count} 条记录"
+    },
+    "format": {
+      "title": "导出格式",
+      "options": {
+        "json": {
+          "label": "JSON",
+          "description": "结构化数据，适合程序处理"
+        },
+        "csv": {
+          "label": "CSV",
+          "description": "纯文本表格，适合导入其他工具"
+        },
+        "xlsx": {
+          "label": "Excel (xlsx)",
+          "description": "多工作表表格，带表头样式"
+        }
+      }
+    },
+    "summaryLine": "已选 {datasets} 个数据项，共 {rows} 行",
+    "exportButton": "导出文件",
+    "exporting": "正在生成…",
+    "loadingData": "正在加载统计数据…",
+    "readyHint": "数据已就绪，点击上方按钮下载",
+    "emptySelection": "请至少勾选一个数据项",
+    "loadError": "加载统计数据失败",
+    "retry": "重试",
+    "privacyHint": "导出在浏览器本地生成，不会上传到任何服务器。",
+    "toast": {
+      "successTitle": "导出完成",
+      "successDescription": "文件 {file} 已开始下载",
+      "errorTitle": "导出失败"
+    },
+    "history": {
+      "lastExportEnd": "上次导出截止到 {end}",
+      "suggestion": "此次可从 {end} 继续导出",
+      "meta": "上次导出：{time} · {rows} 行",
+      "continueAction": "从该时间继续",
+      "dismiss": "关闭提示"
     }
   },
   "health": {

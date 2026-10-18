@@ -1,0 +1,57 @@
+import type { ExportDataset } from "./dataset";
+import { getColumnLabel, getDatasetLabel } from "./dataset";
+import { toPlainCellValue, type ExportFileMeta } from "./file";
+
+function escapeCsvCell(value: string | number | boolean | null): string {
+  if (value === null) return "";
+  const text = String(value);
+  if (/[",\r\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+/**
+ * Serializes every selected dataset into one CSV document.
+ * Datasets are separated by a blank line and preceded by a `# <label>` header,
+ * which keeps the file readable while staying valid CSV.
+ */
+export function buildExportCsv(
+  datasets: ExportDataset[],
+  meta: ExportFileMeta,
+  locale: string,
+): string {
+  const lines: string[] = [
+    escapeCsvCell("neko-master export"),
+    escapeCsvCell(
+      [
+        `${locale.startsWith("zh") ? "网关" : "Backend"}: ${meta.backendName}`,
+        `${locale.startsWith("zh") ? "时间范围" : "Range"}: ${meta.start} ~ ${meta.end}`,
+        `Top ${meta.topN}`,
+        `${locale.startsWith("zh") ? "导出时间" : "Exported"}: ${meta.exportedAt.toISOString()}`,
+      ].join(" | "),
+    ),
+  ];
+
+  for (const dataset of datasets) {
+    lines.push("");
+    lines.push(
+      escapeCsvCell(`# ${getDatasetLabel(dataset, locale)} (${dataset.rows.length})`),
+    );
+    lines.push(
+      dataset.columns
+        .map((column) => escapeCsvCell(getColumnLabel(column, locale)))
+        .join(","),
+    );
+    for (const row of dataset.rows) {
+      lines.push(
+        dataset.columns
+          .map((column) => escapeCsvCell(toPlainCellValue(row[column.key])))
+          .join(","),
+      );
+    }
+  }
+
+  // BOM keeps Excel from mangling non-ASCII text on Windows.
+  return `﻿${lines.join("\r\n")}\r\n`;
+}

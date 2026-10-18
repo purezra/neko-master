@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Globe, Link2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
+import { getContinentColor } from "@/lib/continent-colors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CountryFlag } from "./country-flag";
 import { formatBytes, formatNumber } from "@/lib/utils";
@@ -14,27 +16,13 @@ interface CountryTrafficChartProps {
   data: CountryStats[];
 }
 
-// Continent colors
-const CONTINENT_COLORS: Record<string, string> = {
-  AS: "#F59E0B", // Asia - Amber
-  NA: "#3B82F6", // North America - Blue
-  EU: "#8B5CF6", // Europe - Purple
-  SA: "#10B981", // South America - Emerald
-  AF: "#EF4444", // Africa - Red
-  OC: "#06B6D4", // Oceania - Cyan
-  LOCAL: "#6B7280", // Local - Gray
-  Unknown: "#9CA3AF", // Unknown - Gray
-};
-
-// Get color for continent
-function getContinentColor(continent: string): string {
-  return CONTINENT_COLORS[continent] || CONTINENT_COLORS.Unknown;
-}
+const CONTINENT_LEGEND_KEYS = ["AS", "NA", "EU", "SA", "AF", "OC"];
 
 export function CountryTrafficChart({ data }: CountryTrafficChartProps) {
   const t = useTranslations("countries");
   const mapT = useTranslations("map");
   const countryName = useCountryName();
+  const { palette } = useThemePalette();
 
   const chartData = useMemo(() => {
     if (!data) return [];
@@ -46,9 +34,9 @@ export function CountryTrafficChart({ data }: CountryTrafficChartProps) {
       upload: country.totalUpload,
       connections: country.totalConnections,
       continent: country.continent,
-      color: getContinentColor(country.continent),
+      color: getContinentColor(country.continent, palette),
     }));
-  }, [data, countryName]);
+  }, [data, countryName, palette]);
 
   const totalTraffic = useMemo(() => {
     return chartData.reduce((sum, item) => sum + item.value, 0);
@@ -180,14 +168,15 @@ export function CountryTrafficChart({ data }: CountryTrafficChartProps) {
         {/* Legend */}
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground pt-2 border-t border-border">
           <span className="font-medium">{t("continents")}</span>
-          {Object.entries(CONTINENT_COLORS)
-            .filter(([key]) => key !== "Unknown" && key !== "LOCAL")
-            .map(([continent, color]) => (
-              <span key={continent} className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                {continent}
-              </span>
-            ))}
+          {CONTINENT_LEGEND_KEYS.map((continent) => (
+            <span key={continent} className="flex items-center gap-1">
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: getContinentColor(continent, palette) }}
+              />
+              {continent}
+            </span>
+          ))}
         </div>
       </CardContent>
     </Card>

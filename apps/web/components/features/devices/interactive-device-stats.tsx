@@ -35,7 +35,8 @@ import {
   IPStatsTable,
 } from "@/components/features/stats/table";
 import { InsightChartSkeleton } from "@/components/ui/insight-skeleton";
-import { COLORS, type PageSize } from "@/lib/stats-utils";
+import { type PageSize } from "@/lib/stats-utils";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { useDeviceDomains, useDeviceIPs } from "@/hooks/api/use-devices";
 import type {
   DeviceStats,
@@ -77,6 +78,7 @@ export function InteractiveDeviceStats({
   autoRefresh = true,
 }: InteractiveDeviceStatsProps) {
   const t = useTranslations("devices");
+  const { chartColors: COLORS } = useThemePalette();
   const domainsT = useTranslations("domains");
   const backendT = useTranslations("dashboard");
   const detailTimeRange = useStableTimeRange(timeRange, { roundToMinute: true });
@@ -107,7 +109,7 @@ export function InteractiveDeviceStats({
       color: COLORS[index % COLORS.length],
       rank: index,
     }));
-  }, [data]);
+  }, [data, COLORS]);
 
   const totalTraffic = useMemo(
     () => chartData.reduce((sum, item) => sum + item.value, 0),
@@ -229,7 +231,7 @@ export function InteractiveDeviceStats({
         connections: d.totalConnections,
         color: COLORS[i % COLORS.length],
       }));
-  }, [deviceDomains]);
+  }, [deviceDomains, COLORS]);
 
   const isBackendUnavailable = backendStatus === "unhealthy";
   const emptyHint = isBackendUnavailable

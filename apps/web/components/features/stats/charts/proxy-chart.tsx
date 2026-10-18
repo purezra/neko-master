@@ -13,6 +13,7 @@ import {
   LabelList,
 } from "recharts";
 import { useTranslations } from "next-intl";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { BarChart3 } from "lucide-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,19 +41,6 @@ const CHART_CONFIG = {
   50: { height: 700, barSize: 18, showAllLabels: true },
   100: { height: 1200, barSize: 14, showAllLabels: true },
 } as const;
-
-const DOMAIN_COLORS = [
-  "#3B82F6", // Blue
-  "#8B5CF6", // Purple
-  "#06B6D4", // Cyan
-  "#10B981", // Emerald
-  "#F59E0B", // Amber
-  "#EF4444", // Red
-  "#EC4899", // Pink
-  "#6366F1", // Indigo
-  "#14B8A6", // Teal
-  "#F97316", // Orange
-];
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const clean = hex.replace("#", "");
@@ -91,6 +79,7 @@ function renderCustomBarLabel(props: any) {
 
 export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomainsChartProps) {
   const t = useTranslations("domains");
+  const { chartColors: DOMAIN_COLORS } = useThemePalette();
   const commonT = useTranslations("stats");
   const [topN, setTopN] = useState<TopOption>(10);
   // Track whether this is the initial render to only animate on first load
@@ -172,7 +161,7 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
       }, 800);
     }
     return result;
-  }, [domains]);
+  }, [domains, DOMAIN_COLORS]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {

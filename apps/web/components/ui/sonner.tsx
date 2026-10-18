@@ -1,17 +1,17 @@
 "use client"
 
-import { useTheme } from "next-themes"
 import { Toaster as Sonner } from "sonner"
 import { CheckCircle2, XCircle, AlertTriangle, Info } from "lucide-react"
+import { useThemePalette } from "@/lib/hooks/use-theme-palette"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const { isDark } = useThemePalette()
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={isDark ? "dark" : "light"}
       className="toaster group"
       icons={{
         success: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,

@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { animate, motion, useTransform, useMotionValue } from "framer-motion";
 import { formatBytes, formatBytesPerSecond, cn } from "@/lib/utils";
 import type { TransferRate } from "@/lib/transfer-rate";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import type { StatsSummary } from "@neko-master/shared";
 
 interface StatsCardsProps {
@@ -131,6 +132,15 @@ function RateLine({ value, label }: { value: number | null; label: string }) {
 export function StatsCards({ data, backendStatus, isLoading, error, rate }: StatsCardsProps) {
   const t = useTranslations("stats");
   const locale = useLocale();
+  const { palette } = useThemePalette();
+  const cardColors = [
+    palette.colors.blue,
+    palette.colors.mauve,
+    palette.colors.pink,
+    palette.colors.green,
+    palette.colors.sky,
+    palette.colors.peach,
+  ];
   const formatCount = (n: number) => n.toLocaleString(locale);
   const summaryIsZero =
     !data ||
@@ -198,12 +208,12 @@ export function StatsCards({ data, backendStatus, isLoading, error, rate }: Stat
   if (isLoading) {
     return (
       <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-          <PlaceholderStatCard icon={Download} label={t("totalDownload")} color="#3B82F6" shimmer />
-          <PlaceholderStatCard icon={Upload} label={t("totalUpload")} color="#8B5CF6" shimmer />
-          <PlaceholderStatCard icon={Server} label={t("total")} color="#EC4899" shimmer />
-          <PlaceholderStatCard icon={Activity} label={t("totalConnections")} color="#10B981" shimmer />
-          <PlaceholderStatCard icon={Globe} label={t("domains")} color="#06B6D4" shimmer />
-          <PlaceholderStatCard icon={Route} label={t("rules")} color="#F59E0B" shimmer />
+          <PlaceholderStatCard icon={Download} label={t("totalDownload")} color={cardColors[0]} shimmer />
+          <PlaceholderStatCard icon={Upload} label={t("totalUpload")} color={cardColors[1]} shimmer />
+          <PlaceholderStatCard icon={Server} label={t("total")} color={cardColors[2]} shimmer />
+          <PlaceholderStatCard icon={Activity} label={t("totalConnections")} color={cardColors[3]} shimmer />
+          <PlaceholderStatCard icon={Globe} label={t("domains")} color={cardColors[4]} shimmer />
+          <PlaceholderStatCard icon={Route} label={t("rules")} color={cardColors[5]} shimmer />
       </div>
     );
   }
@@ -212,12 +222,12 @@ export function StatsCards({ data, backendStatus, isLoading, error, rate }: Stat
     <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
       {showUnavailablePlaceholder ? (
         <>
-          <PlaceholderStatCard icon={Download} label={t("totalDownload")} color="#3B82F6" />
-          <PlaceholderStatCard icon={Upload} label={t("totalUpload")} color="#8B5CF6" />
-          <PlaceholderStatCard icon={Server} label={t("total")} color="#EC4899" />
-          <PlaceholderStatCard icon={Activity} label={t("totalConnections")} color="#10B981" />
-          <PlaceholderStatCard icon={Globe} label={t("domains")} color="#06B6D4" />
-          <PlaceholderStatCard icon={Route} label={t("rules")} color="#F59E0B" />
+          <PlaceholderStatCard icon={Download} label={t("totalDownload")} color={cardColors[0]} />
+          <PlaceholderStatCard icon={Upload} label={t("totalUpload")} color={cardColors[1]} />
+          <PlaceholderStatCard icon={Server} label={t("total")} color={cardColors[2]} />
+          <PlaceholderStatCard icon={Activity} label={t("totalConnections")} color={cardColors[3]} />
+          <PlaceholderStatCard icon={Globe} label={t("domains")} color={cardColors[4]} />
+          <PlaceholderStatCard icon={Route} label={t("rules")} color={cardColors[5]} />
         </>
       ) : (
         <>
@@ -231,7 +241,7 @@ export function StatsCards({ data, backendStatus, isLoading, error, rate }: Stat
                 <RateLine value={rate?.download ?? null} label={t("currentDownload")} />
               ) : undefined
             }
-            color="#3B82F6"
+            color={cardColors[0]}
           />
           <AnimatedStatCard
             value={data?.totalUpload || 0}
@@ -243,35 +253,35 @@ export function StatsCards({ data, backendStatus, isLoading, error, rate }: Stat
                 <RateLine value={rate?.upload ?? null} label={t("currentUpload")} />
               ) : undefined
             }
-            color="#8B5CF6"
+            color={cardColors[1]}
           />
           <AnimatedStatCard
             value={(data?.totalDownload || 0) + (data?.totalUpload || 0)}
             formatter={formatBytes}
             label={t("total")}
             icon={Server}
-            color="#EC4899"
+            color={cardColors[2]}
           />
           <AnimatedStatCard
             value={data?.totalConnections || 0}
             formatter={formatCount}
             label={t("totalConnections")}
             icon={Activity}
-            color="#10B981"
+            color={cardColors[3]}
           />
           <AnimatedStatCard
             value={data?.totalDomains || 0}
             formatter={formatCount}
             label={t("domains")}
             icon={Globe}
-            color="#06B6D4"
+            color={cardColors[4]}
           />
           <AnimatedStatCard
             value={data?.totalRules || 0}
             formatter={formatCount}
             label={t("rules")}
             icon={Route}
-            color="#F59E0B"
+            color={cardColors[5]}
           />
         </>
       )}

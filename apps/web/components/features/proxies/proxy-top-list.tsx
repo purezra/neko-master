@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Server, Link2, ArrowUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { CountryFlag, extractCountryCodeFromText, stripLeadingFlagEmoji } from "@/components/features/countries";
 import { OverviewCard } from "@/components/common";
 import { TopListItem } from "@/components/common";
@@ -18,8 +19,6 @@ interface ProxyTopListProps {
 }
 
 type SortBy = "traffic" | "connections";
-
-const COLORS = ["#3B82F6", "#8B5CF6", "#06B6D4", "#10B981", "#F59E0B"];
 
 function normalizeProxyName(name: string): string {
   const normalized = name
@@ -49,6 +48,7 @@ function getProxyCountryCode(name: string): string {
 export function ProxyTopList({ data, limit = 5, onViewAll }: ProxyTopListProps) {
   const [sortBy, setSortBy] = useState<SortBy>("traffic");
   const t = useTranslations("topProxies");
+  const { chartColors: COLORS } = useThemePalette();
   const proxiesT = useTranslations("proxies");
   const isWindows = useIsWindows();
 
@@ -76,7 +76,7 @@ export function ProxyTopList({ data, limit = 5, onViewAll }: ProxyTopListProps) 
     const totalC = list.reduce((sum, p) => sum + p.totalConnections, 0);
     
     return { proxies: list, totalTraffic: totalT, totalConnections: totalC };
-  }, [data, limit, sortBy]);
+  }, [data, limit, sortBy, COLORS]);
 
   const toggleSort = () => {
     setSortBy(prev => prev === "traffic" ? "connections" : "traffic");

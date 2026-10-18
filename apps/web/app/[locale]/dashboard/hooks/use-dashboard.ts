@@ -123,7 +123,8 @@ export function useDashboard(): UseDashboardReturn {
     activeTab === "countries" ||
     activeTab === "proxies" ||
     activeTab === "rules" ||
-    activeTab === "devices";
+    activeTab === "devices" ||
+    activeTab === "export";
 
   const wsSummaryFields = useMemo<SummaryField[] | undefined>(() => {
     switch (activeTab) {
@@ -137,6 +138,8 @@ export function useDashboard(): UseDashboardReturn {
         return ["totals"];
       case "devices":
         return ["deviceStats"];
+      case "export":
+        return ["totals"];
       default:
         return undefined;
     }
@@ -253,7 +256,11 @@ export function useDashboard(): UseDashboardReturn {
     (activeTab === "overview" || activeTab === "countries");
 
   const needsSummaryData =
-    activeTab === "overview" || activeTab === "proxies" || activeTab === "rules" || activeTab === "devices";
+    activeTab === "overview" ||
+    activeTab === "proxies" ||
+    activeTab === "rules" ||
+    activeTab === "devices" ||
+    activeTab === "export";
   const needsCountries = activeTab === "overview" || activeTab === "countries";
 
   // Stats Queries

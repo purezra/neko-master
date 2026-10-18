@@ -74,6 +74,30 @@ export function getRulesQueryKey(backendId?: number, limit = 50, range?: TimeRan
   ] as const;
 }
 
+export function getDomainsTopQueryKey(backendId?: number, limit = 100, range?: TimeRange) {
+  return [
+    "stats",
+    "domains-top",
+    {
+      backendId: backendId ?? null,
+      limit,
+      ...normalizeRange(range),
+    },
+  ] as const;
+}
+
+export function getIPsTopQueryKey(backendId?: number, limit = 100, range?: TimeRange) {
+  return [
+    "stats",
+    "ips-top",
+    {
+      backendId: backendId ?? null,
+      limit,
+      ...normalizeRange(range),
+    },
+  ] as const;
+}
+
 export function getTrafficTrendQueryKey(
   backendId?: number,
   minutes = 30,

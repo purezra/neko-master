@@ -9,6 +9,7 @@ import {
   MapPin,
   Server,
   Route,
+  Download,
   Settings,
   Info,
   ExternalLink,
@@ -52,6 +53,7 @@ const NAV_ITEMS = [
   { id: "countries", icon: MapPin },
   { id: "proxies", icon: Server },
   { id: "devices", icon: Smartphone },
+  { id: "export", icon: Download },
   { id: "health", icon: HeartPulse },
 ];
 

@@ -8,6 +8,8 @@ import { OverviewCard } from "@/components/common";
 import { TopListItem } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { useCountryName } from "@/lib/i18n-country";
+import { useThemePalette } from "@/lib/hooks/use-theme-palette";
+import { getContinentColor } from "@/lib/continent-colors";
 import type { CountryStats } from "@neko-master/shared";
 
 interface CountryTopListProps {
@@ -16,20 +18,11 @@ interface CountryTopListProps {
   onViewAll?: () => void;
 }
 
-const CONTINENT_COLORS: Record<string, string> = {
-  AS: "#F59E0B", NA: "#3B82F6", EU: "#8B5CF6",
-  SA: "#10B981", AF: "#EF4444", OC: "#06B6D4",
-  LOCAL: "#6B7280",
-};
-
-function getContinentColor(continent: string): string {
-  return CONTINENT_COLORS[continent] || "#6B7280";
-}
-
 export function CountryTopList({ data, limit = 7, onViewAll }: CountryTopListProps) {
   const t = useTranslations("topCountries");
   const countriesT = useTranslations("countries");
   const countryName = useCountryName();
+  const { palette } = useThemePalette();
 
   const { countries, totalTraffic } = useMemo(() => {
     if (!data) return { countries: [], totalTraffic: 0 };
@@ -39,11 +32,11 @@ export function CountryTopList({ data, limit = 7, onViewAll }: CountryTopListPro
       .map(c => ({
         ...c,
         total: c.totalDownload + c.totalUpload,
-        color: getContinentColor(c.continent),
+        color: getContinentColor(c.continent, palette),
       }));
     const total = list.reduce((sum, c) => sum + c.total, 0);
     return { countries: list, totalTraffic: total };
-  }, [data, limit]);
+  }, [data, limit, palette]);
 
   if (countries.length === 0) {
     return (

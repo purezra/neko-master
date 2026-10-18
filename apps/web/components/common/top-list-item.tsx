@@ -30,7 +30,7 @@ export function TopListItem({
   subtitle,
   value,
   total,
-  color = "hsl(var(--primary))",
+  color = "var(--primary)",
   showRank = true,
   valueFormatter,
   titleClassName,
@@ -112,7 +112,7 @@ export function CompactTopItem({
   icon,
   title,
   value,
-  color = "hsl(var(--primary))",
+  color = "var(--primary)",
 }: CompactTopItemProps) {
   const isTop3 = rank <= 3;
 
