@@ -30,7 +30,7 @@ export function formatNumber(num: number): string {
   return num.toString();
 }
 
-function parseApiTimestamp(dateString: string): Date {
+export function parseApiTimestamp(dateString: string): Date {
   const raw = (dateString || "").trim();
   if (!raw) return new Date(Number.NaN);
 

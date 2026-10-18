@@ -4,7 +4,6 @@ import * as React from "react";
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
 import {
   getThemeBackgroundColor,
-  isThemePaletteId,
   resolveThemePalette,
   THEME_PALETTES,
   THEME_PALETTE_IDS,
@@ -24,18 +23,13 @@ const THEME_CLASS_VALUES = Object.fromEntries([
 ]);
 
 function ThemeAttributeSync() {
-  const { theme, systemTheme } = useTheme();
+  const { theme, systemTheme, forcedTheme } = useTheme();
 
   React.useEffect(() => {
     const root = document.documentElement;
-    const palette = resolveThemePalette(theme, systemTheme);
+    const palette = resolveThemePalette(forcedTheme ?? theme, systemTheme);
 
-    if (isThemePaletteId(theme)) {
-      root.setAttribute("data-theme", theme);
-    } else {
-      // Plain "light" / "dark" / "system" selections use the default palettes.
-      root.setAttribute("data-theme", palette.id);
-    }
+    root.setAttribute("data-theme", palette.id);
 
     // `resolvedTheme` is the palette id when one is selected, so the mode comes
     // from the palette itself. Keep both mode classes in sync so `.light`- and
@@ -60,7 +54,7 @@ function ThemeAttributeSync() {
       meta.content = color;
       document.head.appendChild(meta);
     }
-  }, [theme, systemTheme]);
+  }, [theme, systemTheme, forcedTheme]);
 
   return null;
 }
@@ -74,7 +68,10 @@ export function ThemeProvider({
       attribute="class"
       themes={THEME_VALUES}
       value={THEME_CLASS_VALUES}
-      {...props}>
+      {...props}
+      // Palette ids are not native color-scheme values; ThemeAttributeSync
+      // owns this property so next-themes cannot clear it after a switch.
+      enableColorScheme={false}>
       <ThemeAttributeSync />
       {children}
     </NextThemesProvider>

@@ -214,6 +214,9 @@ export class StatsService {
    * Check if realtime data should be included
    */
   shouldIncludeRealtime(timeRange: TimeRange): boolean {
+    if (timeRange.persistedOnly) {
+      return false;
+    }
     if (!timeRange.active) {
       return true;
     }

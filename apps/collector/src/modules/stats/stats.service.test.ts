@@ -183,6 +183,15 @@ describe('StatsService', () => {
   });
 
   describe('shouldIncludeRealtime', () => {
+    it('does not merge realtime deltas into persisted exports, even close to now', () => {
+      expect(service.shouldIncludeRealtime({
+        active: true,
+        start: new Date(Date.now() - 3600000).toISOString(),
+        end: new Date().toISOString(),
+        persistedOnly: true,
+      })).toBe(false);
+    });
+
     it('should return true when no time range is active', () => {
       expect(service.shouldIncludeRealtime({ active: false })).toBe(true);
     });

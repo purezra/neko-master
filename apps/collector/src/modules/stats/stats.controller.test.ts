@@ -30,6 +30,51 @@ describe('StatsController', () => {
     cleanup();
   });
 
+  it.each([30, 24 * 60])('does not overlap adjacent export windows of %i minutes', async (minutes) => {
+    const start = Date.parse('2026-10-14T00:00:00Z');
+    const boundary = start + minutes * 60_000;
+    const base = { domain: 'export.test', ip: '203.0.113.1', chain: 'DIRECT', chains: ['DIRECT'], rule: 'Match', rulePayload: '', sourceIP: '192.168.1.2' };
+    db.batchUpdateTrafficStats(backendId, [
+      { ...base, upload: 1, download: 2, timestampMs: boundary - 1000 },
+      { ...base, upload: 3, download: 4, timestampMs: boundary + 1000 },
+    ]);
+    const windows = [[start, boundary - 1], [boundary, boundary + minutes * 60_000 - 1]];
+    for (const [index, [from, to]] of windows.entries()) {
+      const query = new URLSearchParams({ backendId: String(backendId), start: new Date(from).toISOString(), end: new Date(to).toISOString(), persistedOnly: 'true' });
+      const summary = await app.inject({ method: 'GET', url: `/api/stats/summary?${query}` });
+      expect(summary.statusCode).toBe(200);
+      expect(summary.json().totalConnections).toBe(1);
+      expect(summary.json().totalDownload).toBe(index === 0 ? 2 : 4);
+      for (const route of ['domains', 'ips', 'rules', 'proxies', 'countries', 'devices']) {
+        const response = await app.inject({ method: 'GET', url: `/api/stats/${route}?${query}` });
+        expect(response.statusCode).toBe(200);
+        const body = response.json();
+        const rows = Array.isArray(body) ? body : body.data;
+        expect(rows.reduce((sum: number, row: { totalConnections: number }) => sum + row.totalConnections, 0)).toBe(1);
+      }
+    }
+  });
+
+  it('forwards persistedOnly to the routed stats service', async () => {
+    const spy = vi.spyOn(app.statsService, 'getSummaryWithRouting');
+    const response = await app.inject({ method: 'GET', url: `/api/stats/summary?backendId=${backendId}&start=2026-10-14T00:00:00Z&end=2026-10-14T00:59:59.999Z&persistedOnly=true` });
+    expect(response.statusCode).toBe(200);
+    expect(spy).toHaveBeenCalledWith(backendId, {
+      active: true, start: '2026-10-14T00:00:00.000Z', end: '2026-10-14T00:59:59.999Z', persistedOnly: true,
+    });
+  });
+
+  it.each(['domains', 'ips'])('includes high-upload entries in %s exports sorted by total traffic', async (route) => {
+    db.batchUpdateTrafficStats(backendId, Array.from({ length: 11 }, (_, index) => ({
+      domain: `export${index}.test`, ip: `203.0.113.${index + 1}`, chain: 'DIRECT', chains: ['DIRECT'], rule: 'Match', rulePayload: '',
+      upload: index === 10 ? 100000 : 0, download: index === 10 ? 1 : 100 - index,
+      timestampMs: Date.parse('2026-10-14T00:05:00Z'),
+    })));
+    const response = await app.inject({ method: 'GET', url: `/api/stats/${route}?backendId=${backendId}&start=2026-10-14T00:00:00Z&end=2026-10-14T00:59:59.999Z&limit=10&sortBy=totalTraffic&sortOrder=desc&persistedOnly=true` });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data[0].totalUpload).toBe(100000);
+  });
+
   it.each([
     [undefined, 0],
     ['0', 0],

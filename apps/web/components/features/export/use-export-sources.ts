@@ -21,7 +21,7 @@ import type {
 
 export interface UseExportSourcesParams {
   backendId?: number;
-  timeRange: TimeRange;
+  timeRange?: TimeRange;
   topN: number;
   enabled: Record<ExportDatasetId, boolean>;
 }
@@ -41,8 +41,8 @@ export function useExportSources({
   topN,
   enabled,
 }: UseExportSourcesParams): UseExportSourcesResult {
-  const stableRange = useStableTimeRange(timeRange, { roundToMinute: true });
-  const hasBackend = !!backendId;
+  const stableRange = useStableTimeRange(timeRange);
+  const hasBackend = !!backendId && !!stableRange;
 
   const summaryQuery = useQuery({
     queryKey: getSummaryQueryKey(backendId, stableRange),
@@ -84,8 +84,11 @@ export function useExportSources({
     queryFn: () =>
       api.getDomains(backendId, {
         limit: topN,
+        sortBy: "totalTraffic",
+        sortOrder: "desc",
         start: stableRange?.start,
         end: stableRange?.end,
+        persistedOnly: stableRange?.persistedOnly,
       }),
     enabled: hasBackend && enabled.domains,
     staleTime: 15_000,
@@ -96,8 +99,11 @@ export function useExportSources({
     queryFn: () =>
       api.getIPs(backendId, {
         limit: topN,
+        sortBy: "totalTraffic",
+        sortOrder: "desc",
         start: stableRange?.start,
         end: stableRange?.end,
+        persistedOnly: stableRange?.persistedOnly,
       }),
     enabled: hasBackend && enabled.ips,
     staleTime: 15_000,
@@ -124,17 +130,20 @@ export function useExportSources({
     ],
   );
 
-  const queries = [
-    summaryQuery,
-    countriesQuery,
-    rulesQuery,
-    proxiesQuery,
-    devicesQuery,
-    domainsQuery,
-    ipsQuery,
-  ];
+  const queryByDataset = {
+    summary: summaryQuery,
+    countries: countriesQuery,
+    rules: rulesQuery,
+    proxies: proxiesQuery,
+    devices: devicesQuery,
+    domains: domainsQuery,
+    ips: ipsQuery,
+  };
+  const queries = (Object.keys(queryByDataset) as ExportDatasetId[])
+    .filter((id) => enabled[id] && hasBackend)
+    .map((id) => queryByDataset[id]);
   const errorQuery = queries.find((query) => query.error);
-  const isLoading = queries.some((query) => query.isLoading);
+  const isLoading = queries.some((query) => query.isPending || query.isFetching);
 
   const error = errorQuery?.error
     ? errorQuery.error instanceof Error

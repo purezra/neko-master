@@ -12,6 +12,7 @@ function normalizeRange(range?: TimeRange) {
   return {
     start: range?.start ?? "",
     end: range?.end ?? "",
+    ...(range?.persistedOnly ? { persistedOnly: true } : {}),
   };
 }
 
@@ -81,6 +82,7 @@ export function getDomainsTopQueryKey(backendId?: number, limit = 100, range?: T
     {
       backendId: backendId ?? null,
       limit,
+      sortBy: "totalTraffic",
       ...normalizeRange(range),
     },
   ] as const;
@@ -93,6 +95,7 @@ export function getIPsTopQueryKey(backendId?: number, limit = 100, range?: TimeR
     {
       backendId: backendId ?? null,
       limit,
+      sortBy: "totalTraffic",
       ...normalizeRange(range),
     },
   ] as const;

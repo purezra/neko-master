@@ -557,8 +557,9 @@
   "export": {
     "title": "Export Data",
     "description": "Pick a time range and datasets, then export traffic analytics as JSON, CSV, or Excel.",
-    "currentRange": "Current range: {start} ~ {end}",
-    "rangeHint": "Changing the time range reloads the data below automatically",
+    "currentRange": "Actual export range: {start} ~ {end} (end exclusive)",
+    "rangeHint": "Exports saved, complete buckets: minutes for up to 6 hours, UTC hours for longer ranges. The start rounds down; unfinished buckets remain for the next export.",
+    "noCompleteBuckets": "No complete buckets in this range yet. Try again later or select a wider range.",
     "backendUnavailable": "No gateway data is available right now — the export may be empty.",
     "datasets": {
       "title": "Export Content",
@@ -637,6 +638,7 @@
       "suggestion": "You can continue this export from {end}",
       "meta": "Exported {time} · {rows} rows",
       "continueAction": "Continue from here",
+      "legacyRange": "This record uses the old time boundaries. Select a range for a new export.",
       "dismiss": "Dismiss"
     }
   },

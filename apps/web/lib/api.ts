@@ -108,6 +108,7 @@ async function fetchJson<T>(
 export interface TimeRange {
   start: string;
   end: string;
+  persistedOnly?: boolean;
 }
 
 export interface BackendHealth {
@@ -221,7 +222,7 @@ const DEFAULT_GEO_LOOKUP_CONFIG: GeoLookupConfig = {
   missingMmdbFiles: [],
 };
 
-function buildUrl(base: string, params: Record<string, string | number | undefined>): string {
+function buildUrl(base: string, params: Record<string, string | number | boolean | undefined>): string {
   // Use simple URL construction for client-side relative URLs
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -241,13 +242,14 @@ export const api = {
         backendId,
         start: range?.start,
         end: range?.end,
+        persistedOnly: range?.persistedOnly,
       })
     ),
   
   getDomains: (backendId?: number, opts?: {
     offset?: number; limit?: number;
     sortBy?: string; sortOrder?: string; search?: string;
-    start?: string; end?: string;
+    start?: string; end?: string; persistedOnly?: boolean;
   }) =>
     fetchJson<{ data: DomainStats[]; total: number }>(
       buildUrl(`${API_BASE}/stats/domains`, { backendId, ...opts })
@@ -256,7 +258,7 @@ export const api = {
   getIPs: (backendId?: number, opts?: {
     offset?: number; limit?: number;
     sortBy?: string; sortOrder?: string; search?: string;
-    start?: string; end?: string;
+    start?: string; end?: string; persistedOnly?: boolean;
   }) =>
     fetchJson<{ data: IPStats[]; total: number }>(
       buildUrl(`${API_BASE}/stats/ips`, { backendId, ...opts })
@@ -268,6 +270,7 @@ export const api = {
       limit,
       start: range?.start,
       end: range?.end,
+      persistedOnly: range?.persistedOnly,
     })),
     
   getRules: (backendId?: number, limit = 50, range?: TimeRange) =>
@@ -276,6 +279,7 @@ export const api = {
       limit,
       start: range?.start,
       end: range?.end,
+      persistedOnly: range?.persistedOnly,
     })),
     
   getCountries: (backendId?: number, limit = 50, range?: TimeRange) =>
@@ -284,6 +288,7 @@ export const api = {
       limit,
       start: range?.start,
       end: range?.end,
+      persistedOnly: range?.persistedOnly,
     })),
     
   getTrafficTrendAggregated: (backendId?: number, minutes = 30, bucketMinutes = 1, range?: TimeRange, tzOffsetMinutes?: number) =>
@@ -397,7 +402,7 @@ export const api = {
   // Device stats APIs
   getDevices: (backendId?: number, limit = 50, range?: TimeRange) =>
     fetchJson<DeviceStats[]>(
-      buildUrl(`${API_BASE}/stats/devices`, { backendId, limit, start: range?.start, end: range?.end })
+      buildUrl(`${API_BASE}/stats/devices`, { backendId, limit, start: range?.start, end: range?.end, persistedOnly: range?.persistedOnly })
     ),
 
   getDeviceDomains: (sourceIP: string, backendId?: number, range?: TimeRange, limit = DETAIL_FETCH_LIMIT) =>

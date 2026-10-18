@@ -74,6 +74,7 @@ function getTimeRange(request: FastifyRequest, reply: FastifyReply, isShowcaseMo
       start: startDate.toISOString(),
       end: endDate.toISOString(),
       active: true,
+      ...(query.persistedOnly === 'true' ? { persistedOnly: true } : {}),
     };
   }
 
@@ -100,6 +101,7 @@ function getTimeRange(request: FastifyRequest, reply: FastifyReply, isShowcaseMo
     start: startDate.toISOString(),
     end: endDate.toISOString(),
     active: true,
+    ...(query.persistedOnly === 'true' ? { persistedOnly: true } : {}),
   };
 }
 

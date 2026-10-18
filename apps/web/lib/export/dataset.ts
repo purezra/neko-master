@@ -9,6 +9,7 @@ import type {
 } from "@neko-master/shared";
 import type { TimeRange } from "@/lib/api";
 import { getLocalizedCountryName } from "@/lib/i18n-country";
+import { parseApiTimestamp } from "@/lib/utils";
 
 export const EXPORT_DATASET_IDS = [
   "summary",
@@ -139,7 +140,7 @@ function buildSummaryDataset(
 
   push({ zh: "网关", en: "Backend" }, params.backendName);
   push({ zh: "开始时间", en: "Start Time" }, new Date(params.timeRange.start));
-  push({ zh: "结束时间", en: "End Time" }, new Date(params.timeRange.end));
+  push({ zh: "结束时间（不含）", en: "End Time (exclusive)" }, new Date(params.timeRange.end));
   push({ zh: "总下载", en: "Total Download" }, summary?.totalDownload ?? 0);
   push({ zh: "总上传", en: "Total Upload" }, summary?.totalUpload ?? 0);
   push({ zh: "总连接数", en: "Total Connections" }, summary?.totalConnections ?? 0);
@@ -179,7 +180,7 @@ export function buildExportDatasets(
       rules: item.rules?.join(", ") ?? "",
       chains: item.chains?.join(", ") ?? "",
       ipCount: item.ips?.length ?? 0,
-      lastSeen: item.lastSeen ? new Date(item.lastSeen) : null,
+      lastSeen: item.lastSeen ? parseApiTimestamp(item.lastSeen) : null,
     }));
     datasets.push({
       id: "domains",
@@ -214,7 +215,7 @@ export function buildExportDatasets(
       asOrganization: item.geoIP?.asOrganization ?? item.asn ?? "",
       domains: item.domains?.join(", ") ?? "",
       chains: item.chains?.join(", ") ?? "",
-      lastSeen: item.lastSeen ? new Date(item.lastSeen) : null,
+      lastSeen: item.lastSeen ? parseApiTimestamp(item.lastSeen) : null,
     }));
     datasets.push({
       id: "ips",
@@ -244,7 +245,7 @@ export function buildExportDatasets(
       downloadBytes: item.totalDownload,
       uploadBytes: item.totalUpload,
       connections: item.totalConnections,
-      lastSeen: item.lastSeen ? new Date(item.lastSeen) : null,
+      lastSeen: item.lastSeen ? parseApiTimestamp(item.lastSeen) : null,
     }));
     datasets.push({
       id: "rules",
@@ -273,7 +274,7 @@ export function buildExportDatasets(
       downloadBytes: item.totalDownload,
       uploadBytes: item.totalUpload,
       connections: item.totalConnections,
-      lastSeen: item.lastSeen ? new Date(item.lastSeen) : null,
+      lastSeen: item.lastSeen ? parseApiTimestamp(item.lastSeen) : null,
     }));
     datasets.push({
       id: "countries",
@@ -299,7 +300,7 @@ export function buildExportDatasets(
       downloadBytes: item.totalDownload,
       uploadBytes: item.totalUpload,
       connections: item.totalConnections,
-      lastSeen: item.lastSeen ? new Date(item.lastSeen) : null,
+      lastSeen: item.lastSeen ? parseApiTimestamp(item.lastSeen) : null,
     }));
     datasets.push({
       id: "proxies",
@@ -323,7 +324,7 @@ export function buildExportDatasets(
       downloadBytes: item.totalDownload,
       uploadBytes: item.totalUpload,
       connections: item.totalConnections,
-      lastSeen: item.lastSeen ? new Date(item.lastSeen) : null,
+      lastSeen: item.lastSeen ? parseApiTimestamp(item.lastSeen) : null,
     }));
     datasets.push({
       id: "devices",

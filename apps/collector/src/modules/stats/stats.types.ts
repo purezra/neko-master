@@ -121,6 +121,7 @@ export interface TimeRange {
   start?: string;
   end?: string;
   active: boolean;
+  persistedOnly?: boolean;
 }
 
 export interface CountryStats {

@@ -1,7 +1,7 @@
 import type { Sheet, SheetData } from "write-excel-file/browser";
 import type { ExportDataset } from "./dataset";
 import { getColumnLabel, getDatasetLabel } from "./dataset";
-import type { ExportFileMeta } from "./file";
+import { formatExportRange, type ExportFileMeta } from "./file";
 
 const HEADER_BACKGROUND = "#1d4ed8";
 const HEADER_TEXT = "#ffffff";
@@ -41,7 +41,7 @@ function buildSheet(
   ]);
   data.push([
     {
-      value: `${meta.start} ~ ${meta.end} · Top ${meta.topN}`,
+      value: `${formatExportRange(meta)} · Top ${meta.topN}`,
       textColor: "#71717a",
       fontSize: 10,
       columnSpan: Math.max(dataset.columns.length, 2),

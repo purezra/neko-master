@@ -1,6 +1,6 @@
 import type { ExportDataset } from "./dataset";
 import { getColumnLabel, getDatasetLabel } from "./dataset";
-import { toPlainCellValue, type ExportFileMeta } from "./file";
+import { formatExportRange, toPlainCellValue, type ExportFileMeta } from "./file";
 
 function escapeCsvCell(value: string | number | boolean | null): string {
   if (value === null) return "";
@@ -26,7 +26,7 @@ export function buildExportCsv(
     escapeCsvCell(
       [
         `${locale.startsWith("zh") ? "网关" : "Backend"}: ${meta.backendName}`,
-        `${locale.startsWith("zh") ? "时间范围" : "Range"}: ${meta.start} ~ ${meta.end}`,
+        `${locale.startsWith("zh") ? "时间范围" : "Range"}: ${formatExportRange(meta)}`,
         `Top ${meta.topN}`,
         `${locale.startsWith("zh") ? "导出时间" : "Exported"}: ${meta.exportedAt.toISOString()}`,
       ].join(" | "),

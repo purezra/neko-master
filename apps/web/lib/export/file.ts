@@ -8,8 +8,15 @@ export interface ExportFileMeta {
   backendName: string;
   start: string;
   end: string;
+  endExclusive?: boolean;
   topN: number;
   exportedAt: Date;
+}
+
+export function formatExportRange(meta: ExportFileMeta): string {
+  return meta.endExclusive
+    ? `[${meta.start}, ${meta.end})`
+    : `${meta.start} ~ ${meta.end}`;
 }
 
 export function getExportFileStem(meta: ExportFileMeta): string {

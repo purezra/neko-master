@@ -10,14 +10,22 @@ export function useStableTimeRange(
   timeRange?: TimeRange,
   options?: { roundToMinute?: boolean },
 ): TimeRange | undefined {
+  const startValue = timeRange?.start;
+  const endValue = timeRange?.end;
+  const persistedOnly = timeRange?.persistedOnly;
+  const roundToMinute = options?.roundToMinute;
   return useMemo<TimeRange | undefined>(() => {
-    if (!timeRange?.start && !timeRange?.end) return undefined;
-    const start = new Date(timeRange.start);
-    const end = new Date(timeRange.end);
-    if (options?.roundToMinute) {
+    if (!startValue || !endValue) return undefined;
+    const start = new Date(startValue);
+    const end = new Date(endValue);
+    if (roundToMinute) {
       start.setUTCSeconds(0, 0);
       end.setUTCSeconds(0, 0);
     }
-    return { start: start.toISOString(), end: end.toISOString() };
-  }, [timeRange?.start, timeRange?.end, options?.roundToMinute]);
+    return {
+      start: start.toISOString(),
+      end: end.toISOString(),
+      ...(persistedOnly ? { persistedOnly: true } : {}),
+    };
+  }, [startValue, endValue, persistedOnly, roundToMinute]);
 }

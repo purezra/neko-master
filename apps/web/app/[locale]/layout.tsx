@@ -96,9 +96,9 @@ export default async function RootLayout({
               </NextIntlClientProvider>
             </AuthProvider>
           </QueryProvider>
+          <Toaster position="top-center" />
         </ThemeProvider>
         <ServiceWorkerRegister />
-        <Toaster position="top-center" />
       </body>
     </html>
   );

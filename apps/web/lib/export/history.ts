@@ -15,9 +15,10 @@ export interface ExportHistoryRecord {
   id: string;
   backendId?: number;
   backendName: string;
-  /** Inclusive range that was exported, ISO strings. */
+  /** Actual exported range, ISO strings. Legacy records have an inclusive end. */
   start: string;
   end: string;
+  endExclusive?: boolean;
   /** Wall-clock time the export completed. */
   exportedAt: string;
   topN: number;

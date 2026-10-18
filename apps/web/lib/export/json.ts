@@ -6,7 +6,7 @@ export interface ExportJsonPayload {
     app: "neko-master";
     version: string;
     backend: string;
-    range: { start: string; end: string };
+    range: { start: string; end: string; endExclusive: boolean };
     topN: number;
     exportedAt: string;
     datasets: string[];
@@ -34,7 +34,7 @@ export function buildExportJsonPayload(
       app: "neko-master",
       version: process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0",
       backend: meta.backendName,
-      range: { start: meta.start, end: meta.end },
+      range: { start: meta.start, end: meta.end, endExclusive: !!meta.endExclusive },
       topN: meta.topN,
       exportedAt: meta.exportedAt.toISOString(),
       datasets: datasets.map((dataset) => dataset.id),

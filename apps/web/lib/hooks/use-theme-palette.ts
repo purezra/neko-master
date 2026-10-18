@@ -23,16 +23,16 @@ export interface ThemePaletteState {
  * fall back to Mocha, which matches the server-rendered dark defaults.
  */
 export function useThemePalette(): ThemePaletteState {
-  const { theme, systemTheme } = useTheme();
+  const { theme, systemTheme, forcedTheme } = useTheme();
 
   return useMemo(() => {
-    const palette = resolveThemePalette(theme, systemTheme);
+    const palette = resolveThemePalette(forcedTheme ?? theme, systemTheme);
     return {
       palette,
       isDark: palette.mode === "dark",
       chartColors: getThemeChartColors(palette),
     };
-  }, [theme, systemTheme]);
+  }, [theme, systemTheme, forcedTheme]);
 }
 
 /** Cycle through the palette's series colors. */

@@ -47,6 +47,7 @@ import { buildExportJson } from "@/lib/export/json";
 import { buildExportCsv } from "@/lib/export/csv";
 import { buildExportXlsxBlob } from "@/lib/export/xlsx";
 import { useExportHistory } from "@/lib/export/history";
+import { getExportContinuationRange, getExportWindow } from "@/lib/export/range";
 import { useExportSources } from "./use-export-sources";
 
 const ALL_DATASETS: Record<ExportDatasetId, true> = {
@@ -118,10 +119,15 @@ export function ExportContent({
   const selectedCount = EXPORT_DATASET_IDS.filter((id) => selected[id]).length;
   const allSelected = selectedCount === EXPORT_DATASET_IDS.length;
   const noneSelected = selectedCount === 0;
+  const exportWindow = useMemo(() => getExportWindow(timeRange), [timeRange]);
+  const exportRange = exportWindow?.range;
+  const continuationRange = lastExport?.endExclusive
+    ? getExportContinuationRange(lastExport.end)
+    : null;
 
   const { sources, isLoading, error, refetch } = useExportSources({
     backendId: activeBackendId,
-    timeRange,
+    timeRange: exportWindow?.queryRange,
     topN,
     enabled: selected,
   });
@@ -132,11 +138,11 @@ export function ExportContent({
         sources,
         enabled: selected,
         topN,
-        timeRange,
+        timeRange: exportRange ?? timeRange,
         backendName: activeBackendName,
         locale,
       }),
-    [sources, selected, topN, timeRange, activeBackendName, locale],
+    [sources, selected, topN, exportRange, timeRange, activeBackendName, locale],
   );
 
   const rowCounts = useMemo(() => {
@@ -162,11 +168,15 @@ export function ExportContent({
   };
 
   const handleExport = async () => {
-    if (noneSelected || !datasets.length || isExporting) return;
+    if (
+      noneSelected || !datasets.length || isExporting || isLoading ||
+      error || !activeBackendId || !exportRange
+    ) return;
     const meta: ExportFileMeta = {
       backendName: activeBackendName,
-      start: timeRange.start,
-      end: timeRange.end,
+      start: exportRange.start,
+      end: exportRange.end,
+      endExclusive: true,
       topN,
       exportedAt: new Date(),
     };
@@ -189,8 +199,9 @@ export function ExportContent({
       recordExport({
         backendId: activeBackendId,
         backendName: activeBackendName,
-        start: timeRange.start,
-        end: timeRange.end,
+        start: exportRange.start,
+        end: exportRange.end,
+        endExclusive: true,
         exportedAt: new Date().toISOString(),
         topN,
         format,
@@ -229,10 +240,10 @@ export function ExportContent({
                   {t("description")}
                 </p>
                 <p className="pt-1 text-xs text-muted-foreground/80">
-                  {t("currentRange", {
-                    start: formatLocalDateTime(timeRange.start),
-                    end: formatLocalDateTime(timeRange.end),
-                  })}
+                  {exportRange ? t("currentRange", {
+                    start: formatLocalDateTime(exportRange.start),
+                    end: formatLocalDateTime(exportRange.end),
+                  }) : t("noCompleteBuckets")}
                 </p>
               </div>
             </div>
@@ -255,9 +266,9 @@ export function ExportContent({
                     })}
                   </p>
                   <p className="text-muted-foreground">
-                    {t("history.suggestion", {
+                    {lastExport.endExclusive ? t("history.suggestion", {
                       end: formatLocalDateTime(lastExport.end),
-                    })}
+                    }) : t("history.legacyRange")}
                     {" · "}
                     {t("history.meta", {
                       time: formatLocalDateTime(lastExport.exportedAt),
@@ -271,10 +282,11 @@ export function ExportContent({
                   size="sm"
                   variant="outline"
                   className="h-7 text-xs"
+                  disabled={!continuationRange}
                   onClick={() => {
-                    const start = new Date(lastExport.end);
+                    if (!continuationRange) return;
                     onTimeRangeChange(
-                      { start: start.toISOString(), end: new Date().toISOString() },
+                      continuationRange,
                       "custom",
                     );
                     setHistoryDismissed(true);
@@ -465,7 +477,7 @@ export function ExportContent({
 
             <Button
               className="w-full"
-              disabled={noneSelected || isExporting || !!error}
+              disabled={noneSelected || isExporting || isLoading || !!error || !activeBackendId || !exportRange}
               onClick={() => void handleExport()}>
               {isExporting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -481,9 +493,11 @@ export function ExportContent({
                   <span className="block text-center text-[11px] text-muted-foreground">
                     {noneSelected
                       ? t("emptySelection")
-                      : isLoading
-                        ? t("loadingData")
-                        : t("readyHint")}
+                      : !exportRange
+                        ? t("noCompleteBuckets")
+                        : isLoading
+                          ? t("loadingData")
+                          : t("readyHint")}
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[240px]">

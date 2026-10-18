@@ -557,8 +557,9 @@
   "export": {
     "title": "导出数据",
     "description": "选择时间段与数据项，将流量统计导出为 JSON、CSV 或 Excel 文件。",
-    "currentRange": "当前时间段：{start} ~ {end}",
-    "rangeHint": "修改时间段后，下方数据会自动重新加载",
+    "currentRange": "实际导出范围：{start} ~ {end}（不含结束时间）",
+    "rangeHint": "导出已落盘的完整时间桶：6 小时以内按分钟，更长按 UTC 整点。起点向下对齐，未结束的时间桶留待下次导出。",
+    "noCompleteBuckets": "所选范围内暂无已结束的完整时间桶，请稍后重试或扩大范围。",
     "backendUnavailable": "当前没有可用的网关数据，导出内容可能为空。",
     "datasets": {
       "title": "导出内容",
@@ -637,6 +638,7 @@
       "suggestion": "此次可从 {end} 继续导出",
       "meta": "上次导出：{time} · {rows} 行",
       "continueAction": "从该时间继续",
+      "legacyRange": "此记录使用旧的时间边界规则，请重新选择范围导出。",
       "dismiss": "关闭提示"
     }
   },
