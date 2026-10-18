@@ -6,6 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { TopDomainsSimple } from "./top-domains-simple";
 import { TopProxiesSimple } from "./top-proxies-simple";
 import { TopCountriesSimple } from "./top-countries-simple";
+import { EntityTrendDialog, type TrendEntity } from "./entity-trend-dialog";
+import { getEntityTrendRange } from "@/lib/entity-trend";
 import { TrafficTrendChart } from "@/components/features/stats/charts/trend-chart";
 import { useStatsWebSocket } from "@/lib/websocket";
 import { useTrafficTrend } from "@/hooks/api/use-traffic-trend";
@@ -117,6 +119,11 @@ export function OverviewTab({
   const [domainSort, setDomainSort] = useState<"traffic" | "connections">("traffic");
   const [proxySort, setProxySort] = useState<"traffic" | "connections">("traffic");
   const [countrySort, setCountrySort] = useState<"traffic" | "connections">("traffic");
+  const [selectedTrend, setSelectedTrend] = useState<(TrendEntity & { backendId: number }) | null>(null);
+  const entityTrendRange = getEntityTrendRange(timePreset, timeRange);
+  const openEntityTrend = (dimension: TrendEntity["dimension"], value: string) => {
+    if (activeBackendId && entityTrendRange) setSelectedTrend({ dimension, value, backendId: activeBackendId });
+  };
 
   // Traffic trend state
   const [trendGranularity, setTrendGranularity] = useState<TrendGranularity>("minute");
@@ -312,6 +319,7 @@ export function OverviewTab({
           sortBy={domainSort}
           onSortChange={setDomainSort}
           onViewAll={() => onNavigate?.("domains")}
+          onSelect={entityTrendRange && activeBackendId ? value => openEntityTrend("domain", value) : undefined}
           isLoading={isLoading}
         />
         
@@ -321,6 +329,7 @@ export function OverviewTab({
           sortBy={proxySort}
           onSortChange={setProxySort}
           onViewAll={() => onNavigate?.("proxies")}
+          onSelect={entityTrendRange && activeBackendId ? value => openEntityTrend("proxy", value) : undefined}
           isLoading={isLoading}
         />
         
@@ -330,9 +339,13 @@ export function OverviewTab({
           sortBy={countrySort}
           onSortChange={setCountrySort}
           onViewAll={() => onNavigate?.("countries")}
+          onSelect={entityTrendRange && activeBackendId ? value => openEntityTrend("country", value) : undefined}
           isLoading={isLoading}
         />
       </div>
+      {selectedTrend && entityTrendRange && selectedTrend.backendId === activeBackendId && <EntityTrendDialog
+        entity={selectedTrend} backendId={activeBackendId} range={entityTrendRange} onClose={() => setSelectedTrend(null)}
+      />}
     </div>
   );
 }

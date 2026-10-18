@@ -6,7 +6,7 @@ import { isIP } from 'node:net';
 import type { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import type { StatsService } from './stats.service.js';
 import type { TimeRange } from './stats.types.js';
-import type { DeviceProfile } from '@neko-master/shared';
+import type { DeviceProfile, TrafficEntityDimension } from '@neko-master/shared';
 
 // Extend Fastify instance to include statsService
 declare module 'fastify' {
@@ -109,6 +109,28 @@ function getTimeRange(request: FastifyRequest, reply: FastifyReply, isShowcaseMo
 
 const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Promise<void> => {
   const service = fastify.statsService;
+
+  fastify.get('/trend/entity-daily', { schema: { querystring: {
+    type: 'object', required: ['dimension', 'value', 'start', 'end'],
+    properties: {
+      backendId: { type: 'string', pattern: '^[0-9]+$' },
+      dimension: { type: 'string', enum: ['domain', 'proxy', 'country'] },
+      value: { type: 'string', minLength: 1, maxLength: 512 },
+      start: { type: 'string' }, end: { type: 'string' },
+    },
+  } } }, async (request, reply) => {
+    const id = getBackendId(request, service);
+    if (id === null) return reply.status(404).send({ error: 'Backend not found' });
+    if (fastify.authService.isShowcaseMode()) return reply.status(403).send({ error: 'Showcase history is limited to 24 hours' });
+    const query = request.query as Record<string, string>;
+    try {
+      return await service.getEntityDailyTrendWithRouting(id, query.dimension as TrafficEntityDimension, query.value, query.start, query.end);
+    } catch (error: unknown) {
+      if (error instanceof RangeError) return reply.status(400).send({ error: error.message });
+      if (error instanceof Error && error.message === 'Backend not found') return reply.status(404).send({ error: error.message });
+      throw error;
+    }
+  });
 
   fastify.get('/devices/profiles', async (request, reply) => {
     const id = getBackendId(request, service);

@@ -6,6 +6,8 @@ import type {
   RuleStats,
   ComparisonRange,
   TrafficComparisonRow,
+  TrafficEntityDimension,
+  DailyTrafficTotals,
 } from '@neko-master/shared';
 import { loadClickHouseConfig } from './clickhouse.config.js';
 
@@ -53,6 +55,18 @@ export type ClickHouseSummary = {
 };
 
 export class ClickHouseReader {
+  async getEntityDailyTotals(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string): Promise<DailyTrafficTotals[] | null> {
+    const table = dimension === 'country' ? 'country_buffer' : 'traffic_detail_buffer';
+    const column = dimension === 'proxy' ? "trimBoth(arrayElement(splitByString(' > ', chain), 1))" : dimension;
+    const rows = await this.query<Record<string, unknown>>(`SELECT
+      intDiv(toInt64(toUnixTimestamp(minute)) - ${Date.parse(start) / 1000}, 86400) AS bucket,
+      SUM(upload) AS upload, SUM(download) AS download
+      FROM ${this.config.database}.${table} WHERE backend_id = ${backendId}
+      AND minute >= toDateTime('${this.toDateTime(start)}') AND minute < toDateTime('${this.toDateTime(end)}')
+      AND ${column} = '${this.esc(value)}' GROUP BY bucket ORDER BY bucket`);
+    return rows?.map(row => ({ bucket: Number(row.bucket), upload: Number(row.upload), download: Number(row.download) })) ?? null;
+  }
+
   async getComparisonGrowth(backendId: number, dimension: 'domain' | 'source_ip', current: ComparisonRange, baseline: ComparisonRange): Promise<TrafficComparisonRow[] | null> {
     const from = (range: ComparisonRange) => `minute >= toDateTime('${this.toDateTime(range.start)}') AND minute <= toDateTime('${this.toDateTime(range.end)}')`;
     const rows = await this.query<Record<string, unknown>>(`

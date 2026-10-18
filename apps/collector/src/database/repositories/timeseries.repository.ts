@@ -5,10 +5,23 @@
  * traffic in range, traffic trend and aggregated trend.
  */
 import type Database from 'better-sqlite3';
-import type { HourlyStats } from '@neko-master/shared';
+import type { HourlyStats, TrafficEntityDimension, DailyTrafficTotals } from '@neko-master/shared';
 import { BaseRepository } from './base.repository.js';
 
 export class TimeseriesRepository extends BaseRepository {
+  getEntityDailyTotals(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string): DailyTrafficTotals[] {
+    const table = dimension === 'country' ? 'hourly_country_stats' : 'hourly_dim_stats';
+    // Match the overview's first-hop proxy aggregation without LIKE wildcards.
+    const column = dimension === 'proxy'
+      ? "TRIM(CASE WHEN INSTR(chain, ' > ') > 0 THEN SUBSTR(chain, 1, INSTR(chain, ' > ') - 1) ELSE chain END)"
+      : dimension === 'country' ? 'country' : 'domain';
+    return this.db.prepare(`SELECT CAST((strftime('%s', hour) - ?) / 86400 AS INTEGER) AS bucket,
+      SUM(upload) AS upload, SUM(download) AS download
+      FROM ${table} WHERE backend_id = ? AND hour >= ? AND hour < ? AND ${column} = ?
+      GROUP BY bucket ORDER BY bucket`).all(Date.parse(start) / 1000, backendId,
+        this.toHourKey(new Date(start)), this.toHourKey(new Date(end)), value) as DailyTrafficTotals[];
+  }
+
   constructor(db: Database.Database) {
     super(db);
   }

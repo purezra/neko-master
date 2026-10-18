@@ -11,6 +11,8 @@ import type {
   DeviceProfile,
   TrafficComparison,
   ComparisonRange,
+  TrafficEntityDimension,
+  EntityDailyTrend,
 } from "@neko-master/shared";
 import { getAuthHeaders } from "./auth-queries";
 
@@ -238,6 +240,8 @@ function buildUrl(base: string, params: Record<string, string | number | boolean
 }
 
 export const api = {
+  getEntityDailyTrend: (backendId: number, dimension: TrafficEntityDimension, value: string, range: TimeRange) =>
+    fetchJson<EntityDailyTrend>(buildUrl(`${API_BASE}/stats/trend/entity-daily`, { backendId, dimension, value, start: range.start, end: range.end })),
   getDeviceProfiles: (backendId: number) => fetchJson<DeviceProfile[]>(buildUrl(`${API_BASE}/stats/devices/profiles`, { backendId })),
   saveDeviceProfile: (backendId: number, profile: DeviceProfile) => fetchJson<DeviceProfile>(buildUrl(`${API_BASE}/stats/devices/profiles`, { backendId }), "PUT", profile),
   getTrafficComparison: (backendId: number, current: ComparisonRange, baseline: ComparisonRange) =>

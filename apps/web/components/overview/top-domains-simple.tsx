@@ -14,6 +14,7 @@ interface TopDomainsSimpleProps {
   sortBy: "traffic" | "connections";
   onSortChange: (mode: "traffic" | "connections") => void;
   onViewAll?: () => void;
+  onSelect?: (value: string) => void;
   isLoading?: boolean;
 }
 
@@ -26,9 +27,11 @@ export const TopDomainsSimple = React.memo(function TopDomainsSimple({
   sortBy,
   onSortChange,
   onViewAll,
+  onSelect,
   isLoading,
 }: TopDomainsSimpleProps) {
   const t = useTranslations("topDomains");
+  const trendT = useTranslations("entityTrend");
   const { settings } = useSettings();
   const faviconDisabled = settings.faviconProvider === "off";
   const itemCount = useResponsiveItemCount();
@@ -122,7 +125,12 @@ export const TopDomainsSimple = React.memo(function TopDomainsSimple({
           return (
             <div
               key={domain.domain}
-              className="p-2.5 rounded-xl border border-border/50 bg-card/50 hover:bg-card transition-colors"
+              className={cn("p-2.5 rounded-xl border border-border/50 bg-card/50 hover:bg-card transition-colors", onSelect && "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring")}
+              role={onSelect ? "button" : undefined}
+              tabIndex={onSelect ? 0 : undefined}
+              title={onSelect ? trendT("open") : undefined}
+              onClick={onSelect ? () => onSelect(domain.domain) : undefined}
+              onKeyDown={onSelect ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(domain.domain); } } : undefined}
             >
               <div className="flex items-center gap-2 mb-1.5">
                 <span className={cn(
@@ -253,6 +261,10 @@ export const TopDomainsSimple = React.memo(function TopDomainsSimple({
 }, (prev, next) => {
   return (
     JSON.stringify(prev.domains) === JSON.stringify(next.domains) &&
-    prev.sortBy === next.sortBy
+    prev.sortBy === next.sortBy &&
+      prev.isLoading === next.isLoading &&
+      prev.onSelect === next.onSelect &&
+      prev.onSortChange === next.onSortChange &&
+      prev.onViewAll === next.onViewAll
   );
 });

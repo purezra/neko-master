@@ -358,3 +358,17 @@ export type BackendType = 'clash' | 'surge';
 // Gateway utilities
 export * from './gateway-utils.js';
 export * from './geo-ip-utils.js';
+
+export type TrafficEntityDimension = 'domain' | 'proxy' | 'country';
+export interface DailyTrafficTotals {
+  bucket: number;
+  upload: number;
+  download: number;
+}
+export interface EntityDailyTrend {
+  dimension: TrafficEntityDimension;
+  value: string;
+  start: string;
+  end: string;
+  points: Array<{ start: string; end: string; upload: number; download: number }>;
+}

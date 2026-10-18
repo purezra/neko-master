@@ -20,7 +20,7 @@ import type {
   DeviceStats,
 } from './stats.types.js';
 import { ClickHouseReader } from '../clickhouse/clickhouse.reader.js';
-import type { ComparisonRange, DeviceProfile, TrafficComparison, TrafficComparisonRow } from '@neko-master/shared';
+import type { ComparisonRange, DeviceProfile, TrafficComparison, TrafficComparisonRow, TrafficEntityDimension, EntityDailyTrend } from '@neko-master/shared';
 
 interface PaginatedStatsOptions {
   offset?: number;
@@ -35,6 +35,30 @@ interface PaginatedStatsOptions {
 type RoutedSource = 'clickhouse' | 'sqlite';
 
 export class StatsService {
+  async getEntityDailyTrendWithRouting(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string): Promise<EntityDailyTrend> {
+    if (!this.db.getBackend(backendId)) throw new Error('Backend not found');
+    const from = Date.parse(start), to = Date.parse(end);
+    const day = 86400000;
+    if (!['domain', 'proxy', 'country'].includes(dimension) || !value?.trim() || value.length > 512 ||
+      !Number.isFinite(from) || !Number.isFinite(to) || to - from < 2 * day || to - from > 366 * day || from % 3600000 !== 0 || to % 3600000 !== 0) {
+      throw new RangeError('Daily entity trends require a valid entity and complete hour ranges spanning 2 to 366 days');
+    }
+    let rows = this.clickHouseReader.shouldUseForRange(start, end)
+      ? await this.clickHouseReader.getEntityDailyTotals(backendId, dimension, value, start, end) : null;
+    if (rows === null) {
+      this.failIfStrictFallback('entity-daily-trend');
+      this.recordRoute('entity-daily-trend', 'sqlite');
+      rows = this.db.repos.timeseries.getEntityDailyTotals(backendId, dimension, value, start, end);
+    } else this.recordRoute('entity-daily-trend', 'clickhouse');
+    const totals = new Map(rows.map(row => [row.bucket, row]));
+    return { dimension, value, start: new Date(from).toISOString(), end: new Date(to).toISOString(),
+      points: Array.from({ length: Math.ceil((to - from) / day) }, (_, index) => ({
+        start: new Date(from + index * day).toISOString(), end: new Date(Math.min(to, from + (index + 1) * day)).toISOString(),
+        upload: totals.get(index)?.upload ?? 0, download: totals.get(index)?.download ?? 0,
+      })),
+    };
+  }
+
   getDeviceProfiles(backendId: number): DeviceProfile[] | null {
     return this.db.getBackend(backendId) ? this.db.repos.device.getProfiles(backendId) : null;
   }

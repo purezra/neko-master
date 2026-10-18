@@ -14,6 +14,7 @@ interface TopProxiesSimpleProps {
   sortBy: "traffic" | "connections";
   onSortChange: (mode: "traffic" | "connections") => void;
   onViewAll?: () => void;
+  onSelect?: (value: string) => void;
   isLoading?: boolean;
 }
 
@@ -32,9 +33,11 @@ export const TopProxiesSimple = React.memo(
     sortBy,
     onSortChange,
     onViewAll,
+    onSelect,
     isLoading,
   }: TopProxiesSimpleProps) {
     const t = useTranslations("topProxies");
+    const trendT = useTranslations("entityTrend");
     const isWindows = useIsWindows();
     const itemCount = useResponsiveItemCount();
 
@@ -131,7 +134,12 @@ export const TopProxiesSimple = React.memo(
             return (
               <div
                 key={proxyItem.chain}
-                className="p-2.5 rounded-xl border border-border/50 bg-card/50 hover:bg-card transition-colors">
+                className={cn("p-2.5 rounded-xl border border-border/50 bg-card/50 hover:bg-card transition-colors", onSelect && "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring")}
+              role={onSelect ? "button" : undefined}
+              tabIndex={onSelect ? 0 : undefined}
+              title={onSelect ? trendT("open") : undefined}
+              onClick={onSelect ? () => onSelect(proxyItem.chain) : undefined}
+              onKeyDown={onSelect ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(proxyItem.chain); } } : undefined}>
                 {/* Row 1: Rank + Name + Total */}
                 <div className="flex items-center gap-2 mb-1.5">
                   <span
@@ -250,7 +258,11 @@ export const TopProxiesSimple = React.memo(
   (prev, next) => {
     return (
       JSON.stringify(prev.proxies) === JSON.stringify(next.proxies) &&
-      prev.sortBy === next.sortBy
+      prev.sortBy === next.sortBy &&
+      prev.isLoading === next.isLoading &&
+      prev.onSelect === next.onSelect &&
+      prev.onSortChange === next.onSortChange &&
+      prev.onViewAll === next.onViewAll
     );
   },
 );

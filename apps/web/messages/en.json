@@ -720,5 +720,21 @@
     "domainGrowth": "Top 10 domain traffic increases",
     "rankingHint": "Ranked by additional bytes across the full aggregated dataset.",
     "noGrowth": "No traffic increases in this period"
+  },
+  "entityTrend": {
+    "empty": "No saved traffic for this item in the selected period",
+    "points": "{count} data points",
+    "total": "Total traffic",
+    "description": "One point per 24 hours from the selected start, with a shorter final interval if needed. Uses saved, complete hour buckets; missing history is shown as zero and is subject to retention (up to 366 days).",
+    "loading": "Loading traffic history",
+    "open": "View daily traffic trend",
+    "download": "Download",
+    "table": "View daily data",
+    "title": "Daily traffic trend",
+    "retry": "Retry",
+    "error": "Could not load traffic history. Retry or choose a shorter range (2–366 days).",
+    "upload": "Upload",
+    "chartLabel": "Daily traffic line chart with {count} points",
+    "period": "Period"
   }
 }
