@@ -2,6 +2,7 @@
  * Stats Service - Business logic for statistics
  */
 
+import { isIP } from 'node:net';
 import type { StatsDatabase } from '../db/db.js';
 import type { RealtimeStore } from '../realtime/realtime.store.js';
 import type {
@@ -20,6 +21,8 @@ import type {
   DeviceStats,
 } from './stats.types.js';
 import { ClickHouseReader } from '../clickhouse/clickhouse.reader.js';
+import { resolveComparisonRanges } from './comparison-range.js';
+import type { DeviceDomainComparisonOptions, DeviceDomainComparison } from '@neko-master/shared';
 import type { ComparisonRange, DeviceProfile, TrafficComparison, TrafficComparisonRow, TrafficEntityDimension, EntityDailyTrend } from '@neko-master/shared';
 
 interface PaginatedStatsOptions {
@@ -35,6 +38,23 @@ interface PaginatedStatsOptions {
 type RoutedSource = 'clickhouse' | 'sqlite';
 
 export class StatsService {
+  async getDeviceDomainComparisonWithRouting(backendId: number, sourceIP: string, currentRange: ComparisonRange, baselineRange: ComparisonRange, options: DeviceDomainComparisonOptions): Promise<DeviceDomainComparison> {
+    if (!this.db.getBackend(backendId)) throw new Error('Backend not found');
+    const [current, baseline] = resolveComparisonRanges(currentRange, baselineRange);
+    if (!isIP(sourceIP) || !Number.isInteger(options.offset) || options.offset < 0 || options.offset > 1000000 ||
+      !Number.isInteger(options.limit) || options.limit < 1 || options.limit > 100 || options.search.length > 253 ||
+      !['all', 'increased', 'decreased', 'new'].includes(options.filter)) throw new RangeError('Invalid device comparison options');
+    const preferCH = [currentRange, baselineRange].every(range => this.clickHouseReader.shouldUseForRange(range.start, range.end));
+    let result = preferCH ? await this.clickHouseReader.getDeviceDomainComparison(backendId, sourceIP, current, baseline, options) : null;
+    if (result === null) {
+      this.failIfStrictFallback('comparison.device-domains');
+      this.recordRoute('comparison.device-domains', 'sqlite');
+      result = this.db.repos.comparison.getDeviceDomains(backendId, sourceIP, current, baseline, options);
+    } else this.recordRoute('comparison.device-domains', 'clickhouse');
+    const profile = this.db.repos.device.getProfiles(backendId).find(item => item.sourceIP === sourceIP);
+    return { ...result, device: profile ?? { sourceIP, displayName: '', groupName: '' }, currentRange, baselineRange };
+  }
+
   async getEntityDailyTrendWithRouting(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string): Promise<EntityDailyTrend> {
     if (!this.db.getBackend(backendId)) throw new Error('Backend not found');
     const from = Date.parse(start), to = Date.parse(end);
@@ -76,13 +96,7 @@ export class StatsService {
   async getTrafficComparisonWithRouting(backendId: number, currentRange: ComparisonRange, baselineRange: ComparisonRange): Promise<TrafficComparison> {
     if (!this.db.getBackend(backendId)) throw new Error('Backend not found');
     const ranges = [currentRange, baselineRange];
-    const times = ranges.map(range => [Date.parse(range.start), Date.parse(range.end)]);
-    if (times.some(([start, end]) => !Number.isFinite(start) || !Number.isFinite(end) || end <= start || end - start > 31 * 86400000 || start % 60000 !== 0 || end % 60000 !== 0) ||
-      times[0][1] - times[0][0] !== times[1][1] - times[1][0] || times[1][1] > times[0][0] ||
-      times.some(([start, end]) => end - start > 6 * 3600000 && (start % 3600000 !== 0 || end % 3600000 !== 0))) {
-      throw new RangeError('Comparison requires equal, non-overlapping complete bucket ranges of at most 31 days');
-    }
-    const [current, baseline] = ranges.map(range => ({ start: new Date(range.start).toISOString(), end: new Date(Date.parse(range.end) - 1).toISOString() }));
+    const [current, baseline] = resolveComparisonRanges(currentRange, baselineRange);
     const labelDevices = (rows: TrafficComparisonRow[]) => {
       const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile]));
       return rows.map(row => ({ ...row, displayName: profiles.get(row.key)?.displayName, groupName: profiles.get(row.key)?.groupName }));

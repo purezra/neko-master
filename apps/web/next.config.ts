@@ -22,6 +22,7 @@ const API_DESTINATION = apiUrl.endsWith('/api')
 // Base Next.js config
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  devIndicators: false,
   images: {
     localPatterns: [
       { pathname: "/**", search: "" },

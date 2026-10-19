@@ -1,6 +1,6 @@
 import type { ExportDataset } from "./dataset";
 import { getColumnLabel, getDatasetLabel } from "./dataset";
-import { formatExportRange, toPlainCellValue, type ExportFileMeta } from "./file";
+import { formatExportRange, formatExportTimestamp, getExportDisplayCell, toPlainCellValue, type ExportFileMeta } from "./file";
 
 function escapeCsvCell(value: string | number | boolean | null): string {
   if (value === null) return "";
@@ -28,7 +28,7 @@ export function buildExportCsv(
         `${locale.startsWith("zh") ? "网关" : "Backend"}: ${meta.backendName}`,
         `${locale.startsWith("zh") ? "时间范围" : "Range"}: ${formatExportRange(meta)}`,
         `Top ${meta.topN}`,
-        `${locale.startsWith("zh") ? "导出时间" : "Exported"}: ${meta.exportedAt.toISOString()}`,
+        `${locale.startsWith("zh") ? "导出时间" : "Exported"}: ${formatExportTimestamp(meta.exportedAt)}`,
       ].join(" | "),
     ),
   ];
@@ -43,10 +43,10 @@ export function buildExportCsv(
         .map((column) => escapeCsvCell(getColumnLabel(column, locale)))
         .join(","),
     );
-    for (const row of dataset.rows) {
+    for (const [rowIndex] of dataset.rows.entries()) {
       lines.push(
         dataset.columns
-          .map((column) => escapeCsvCell(toPlainCellValue(row[column.key])))
+          .map((column) => escapeCsvCell(toPlainCellValue(getExportDisplayCell(dataset, rowIndex, column.key))))
           .join(","),
       );
     }

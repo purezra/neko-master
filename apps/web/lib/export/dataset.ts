@@ -42,6 +42,8 @@ export interface ExportDataset {
   label: { zh: string; en: string };
   columns: ExportColumn[];
   rows: Array<Record<string, ExportCellValue>>;
+  /** Rows whose mixed-type summary value is a byte count. */
+  byteRows?: number[];
 }
 
 export interface ExportSourceData {
@@ -131,7 +133,9 @@ function buildSummaryDataset(
   params: BuildExportDatasetsParams,
 ): ExportDataset {
   const rows: Array<Record<string, ExportCellValue>> = [];
-  const push = (label: ExportColumn["label"], value: ExportCellValue) => {
+  const byteRows: number[] = [];
+  const push = (label: ExportColumn["label"], value: ExportCellValue, bytes = false) => {
+    if (bytes) byteRows.push(rows.length);
     rows.push({
       metric: params.locale.startsWith("zh") ? label.zh : label.en,
       value,
@@ -141,8 +145,8 @@ function buildSummaryDataset(
   push({ zh: "网关", en: "Backend" }, params.backendName);
   push({ zh: "开始时间", en: "Start Time" }, new Date(params.timeRange.start));
   push({ zh: "结束时间（不含）", en: "End Time (exclusive)" }, new Date(params.timeRange.end));
-  push({ zh: "总下载", en: "Total Download" }, summary?.totalDownload ?? 0);
-  push({ zh: "总上传", en: "Total Upload" }, summary?.totalUpload ?? 0);
+  push({ zh: "总下载", en: "Total Download" }, summary?.totalDownload ?? 0, true);
+  push({ zh: "总上传", en: "Total Upload" }, summary?.totalUpload ?? 0, true);
   push({ zh: "总连接数", en: "Total Connections" }, summary?.totalConnections ?? 0);
   push({ zh: "独立域名", en: "Unique Domains" }, summary?.totalDomains ?? 0);
   push({ zh: "独立 IP", en: "Unique IPs" }, summary?.totalIPs ?? 0);
@@ -151,6 +155,7 @@ function buildSummaryDataset(
 
   return {
     id: "summary",
+    byteRows,
     label: { zh: "汇总", en: "Summary" },
     columns: [
       { key: "metric", label: { zh: "指标", en: "Metric" } },

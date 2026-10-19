@@ -584,6 +584,7 @@
     }
   },
   "export": {
+    "timeZoneHint": "Export contents and filenames use China Standard Time (UTC+08:00).",
     "title": "Export Data",
     "description": "Pick a time range and datasets, then export traffic analytics as JSON, CSV, or Excel.",
     "currentRange": "Actual export range: {start} ~ {end} (end exclusive)",
@@ -699,6 +700,8 @@
     "checkInterval": "Health checks are recorded once per minute. Gaps indicate the collector service was interrupted."
   },
   "comparison": {
+    "deviceDomainDetails": "Compare domains",
+    "viewDeviceDomains": "Compare domain traffic for {name}",
     "title": "Period comparison",
     "description": "Compare equal durations and find the devices and domains with the largest traffic increases.",
     "today": "Today / yesterday",
@@ -741,5 +744,30 @@
     "upload": "Upload",
     "chartLabel": "Daily traffic line chart with {count} points",
     "period": "Period"
+  },
+  "deviceComparison": {
+    "new": "New",
+    "retry": "Retry",
+    "close": "Close",
+    "all": "All",
+    "domain": "Domain",
+    "decreased": "Decreased",
+    "baselineTotal": "Previous domain traffic",
+    "title": "Device domain comparison",
+    "search": "Search domains",
+    "description": "Compare domains for this device across both periods, including increases, decreases and domains no longer used. Sorted by the largest absolute traffic change.",
+    "current": "Current period",
+    "totalsHint": "Totals cover all recorded domains for this device across both periods, independent of filters and pages. Unidentified domains are excluded; history depends on retention.",
+    "results": "{count} domains",
+    "next": "Next",
+    "currentTotal": "Current domain traffic",
+    "increased": "Increased",
+    "baseline": "Baseline period",
+    "previous": "Previous",
+    "loading": "Loading domain comparisons",
+    "empty": "No saved domain traffic for this device in either period",
+    "error": "Could not load domain comparisons. Please retry.",
+    "noMatches": "No matching domains. Change the filter or clear the search.",
+    "change": "Traffic change"
   }
 }

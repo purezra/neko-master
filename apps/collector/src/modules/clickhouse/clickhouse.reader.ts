@@ -8,6 +8,8 @@ import type {
   TrafficComparisonRow,
   TrafficEntityDimension,
   DailyTrafficTotals,
+  DeviceDomainComparisonOptions,
+  DeviceDomainComparisonPage,
 } from '@neko-master/shared';
 import { loadClickHouseConfig } from './clickhouse.config.js';
 
@@ -55,6 +57,24 @@ export type ClickHouseSummary = {
 };
 
 export class ClickHouseReader {
+  async getDeviceDomainComparison(backendId: number, sourceIP: string, current: ComparisonRange, baseline: ComparisonRange, options: DeviceDomainComparisonOptions): Promise<DeviceDomainComparisonPage | null> {
+    const range = (period: ComparisonRange) => `minute >= toDateTime('${this.toDateTime(period.start)}') AND minute <= toDateTime('${this.toDateTime(period.end)}')`;
+    const cte = `WITH compared AS (SELECT domain AS key, SUMIf(upload + download, ${range(current)}) AS currentBytes,
+      SUMIf(upload + download, ${range(baseline)}) AS baselineBytes FROM ${this.config.database}.traffic_detail_buffer
+      WHERE backend_id = ${backendId} AND source_ip = '${this.esc(sourceIP)}' AND domain != ''
+      AND ((${range(current)}) OR (${range(baseline)})) GROUP BY domain HAVING currentBytes + baselineBytes > 0)`;
+    const filter = { all: '1=1', increased: 'currentBytes > baselineBytes', decreased: 'currentBytes < baselineBytes', new: 'currentBytes > 0 AND baselineBytes = 0' }[options.filter];
+    const predicate = `(${filter}) AND positionCaseInsensitiveUTF8(key, '${this.esc(options.search)}') > 0`;
+    const [summary, rows] = await Promise.all([
+      this.query<Record<string, unknown>>(`${cte} SELECT SUM(currentBytes) AS currentBytes, SUM(baselineBytes) AS baselineBytes, countIf(${predicate}) AS total FROM compared`),
+      this.query<Record<string, unknown>>(`${cte} SELECT key, currentBytes, baselineBytes FROM compared WHERE ${predicate}
+        ORDER BY abs(toFloat64(currentBytes) - toFloat64(baselineBytes)) DESC, key ASC LIMIT ${options.limit} OFFSET ${options.offset}`),
+    ]);
+    if (!summary?.length || !rows) return null;
+    return { total: Number(summary[0].total), currentBytes: Number(summary[0].currentBytes), baselineBytes: Number(summary[0].baselineBytes),
+      rows: rows.map(row => ({ key: String(row.key), currentBytes: Number(row.currentBytes), baselineBytes: Number(row.baselineBytes) })) };
+  }
+
   async getEntityDailyTotals(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string): Promise<DailyTrafficTotals[] | null> {
     const table = dimension === 'country' ? 'country_buffer' : 'traffic_detail_buffer';
     const column = dimension === 'proxy' ? "trimBoth(arrayElement(splitByString(' > ', chain), 1))" : dimension;

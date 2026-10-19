@@ -4,6 +4,42 @@ export const EXPORT_FORMATS = ["json", "csv", "xlsx"] as const;
 
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
 
+export const EXPORT_TIME_ZONE = "Asia/Shanghai";
+export const EXPORT_UTC_OFFSET = "+08:00";
+const exportClock = new Intl.DateTimeFormat("en-CA", {
+  timeZone: EXPORT_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+});
+
+export function formatExportTimestamp(value: Date | string): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = Object.fromEntries(exportClock.formatToParts(date).map(part => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}.${String(date.getUTCMilliseconds()).padStart(3, "0")}${EXPORT_UTC_OFFSET}`;
+}
+
+export function formatExportDateTime(value: Date | string): string {
+  return formatExportTimestamp(value).slice(0, 19).replace("T", " ");
+}
+
+/** Excel dates have no zone; the writer serializes Date.getTime() as UTC. */
+export function toExportExcelDate(value: Date): Date {
+  return new Date(`${formatExportTimestamp(value).slice(0, 23)}Z`);
+}
+
+export function formatExportTraffic(bytes: number): string {
+  const value = Number.isFinite(bytes) ? bytes : 0;
+  if (Math.abs(value) >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(4)} GB`;
+  return Math.abs(value) >= 1024 * 1024 ? `${(value / (1024 * 1024)).toFixed(2)} MB` : `${(value / 1024).toFixed(2)} KB`;
+}
+
+export function getExportDisplayCell(dataset: ExportDataset, rowIndex: number, columnKey: string): unknown {
+  const value = dataset.rows[rowIndex][columnKey];
+  const isBytes = dataset.columns.find(column => column.key === columnKey)?.kind === "bytes" ||
+    (columnKey === "value" && dataset.byteRows?.includes(rowIndex));
+  return isBytes && typeof value === "number" ? formatExportTraffic(value) : value;
+}
+
 export interface ExportFileMeta {
   backendName: string;
   start: string;
@@ -14,27 +50,17 @@ export interface ExportFileMeta {
 }
 
 export function formatExportRange(meta: ExportFileMeta): string {
-  return meta.endExclusive
-    ? `[${meta.start}, ${meta.end})`
-    : `${meta.start} ~ ${meta.end}`;
+  const start = formatExportDateTime(meta.start), end = formatExportDateTime(meta.end);
+  return `${meta.endExclusive ? `[${start}, ${end})` : `${start} ~ ${end}`} (UTC${EXPORT_UTC_OFFSET})`;
 }
 
 export function getExportFileStem(meta: ExportFileMeta): string {
-  const date = meta.exportedAt;
-  const stamp = [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("");
-  const clock = [
-    String(date.getHours()).padStart(2, "0"),
-    String(date.getMinutes()).padStart(2, "0"),
-  ].join("");
+  const stamp = (value: Date | string) => formatExportTimestamp(value).slice(0, 23).replace(/[-:.]/g, "").replace("T", "-");
   const backend = (meta.backendName || "backend")
     .replace(/[<>:"/\\|?*]|\p{Cc}/gu, "_")
     .trim()
     .slice(0, 40) || "backend";
-  return `neko-master-${backend}-${stamp}-${clock}`;
+  return `neko-master-${backend}-${stamp(meta.start).slice(0, 15)}_to_${stamp(meta.end).slice(0, 15)}-UTC+0800-exported-${stamp(meta.exportedAt)}`;
 }
 
 export function getExportFileName(
@@ -61,14 +87,14 @@ export function downloadBlob(filename: string, blob: Blob): void {
 
 /**
  * Normalizes a cell value for plain-text formats (JSON / CSV).
- * Dates become ISO strings, numbers stay numeric.
+ * Dates keep their instant with an explicit China Standard Time offset.
  */
 export function toPlainCellValue(
   value: unknown,
 ): string | number | boolean | null {
   if (value === null || value === undefined) return null;
   if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+    return Number.isNaN(value.getTime()) ? null : formatExportTimestamp(value);
   }
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : null;

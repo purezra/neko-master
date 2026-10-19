@@ -40,6 +40,7 @@ import {
 import {
   downloadBlob,
   getExportFileName,
+  formatExportDateTime,
   type ExportFileMeta,
   type ExportFormat,
 } from "@/lib/export/file";
@@ -90,11 +91,8 @@ interface ExportContentProps {
   backendStatus: BackendStatus;
 }
 
-function formatLocalDateTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "-";
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+function formatBeijingDateTime(iso: string): string {
+  return formatExportDateTime(iso).slice(0, 16) || "-";
 }
 
 export function ExportContent({
@@ -241,10 +239,11 @@ export function ExportContent({
                 </p>
                 <p className="pt-1 text-xs text-muted-foreground/80">
                   {exportRange ? t("currentRange", {
-                    start: formatLocalDateTime(exportRange.start),
-                    end: formatLocalDateTime(exportRange.end),
+                    start: formatBeijingDateTime(exportRange.start),
+                    end: formatBeijingDateTime(exportRange.end),
                   }) : t("noCompleteBuckets")}
                 </p>
+                <p className="text-xs text-muted-foreground/80">{t("timeZoneHint")}</p>
               </div>
             </div>
             <div className="flex flex-col items-start gap-2 sm:items-end">
@@ -262,16 +261,16 @@ export function ExportContent({
                 <div className="min-w-0 space-y-0.5">
                   <p className="font-medium text-foreground">
                     {t("history.lastExportEnd", {
-                      end: formatLocalDateTime(lastExport.end),
+                      end: formatBeijingDateTime(lastExport.end),
                     })}
                   </p>
                   <p className="text-muted-foreground">
                     {lastExport.endExclusive ? t("history.suggestion", {
-                      end: formatLocalDateTime(lastExport.end),
+                      end: formatBeijingDateTime(lastExport.end),
                     }) : t("history.legacyRange")}
                     {" · "}
                     {t("history.meta", {
-                      time: formatLocalDateTime(lastExport.exportedAt),
+                      time: formatBeijingDateTime(lastExport.exportedAt),
                       rows: lastExport.rowCount,
                     })}
                   </p>

@@ -1,7 +1,7 @@
 import type { Sheet, SheetData } from "write-excel-file/browser";
 import type { ExportDataset } from "./dataset";
 import { getColumnLabel, getDatasetLabel } from "./dataset";
-import { formatExportRange, type ExportFileMeta } from "./file";
+import { formatExportRange, toExportExcelDate, getExportDisplayCell, type ExportFileMeta } from "./file";
 
 const HEADER_BACKGROUND = "#1d4ed8";
 const HEADER_TEXT = "#ffffff";
@@ -44,6 +44,8 @@ function buildSheet(
       value: `${formatExportRange(meta)} · Top ${meta.topN}`,
       textColor: "#71717a",
       fontSize: 10,
+      wrap: true,
+      height: 32,
       columnSpan: Math.max(dataset.columns.length, 2),
     },
   ]);
@@ -62,16 +64,16 @@ function buildSheet(
     })),
   );
 
-  for (const row of dataset.rows) {
+  for (const [rowIndex] of dataset.rows.entries()) {
     data.push(
       dataset.columns.map((column) => {
-        const raw = row[column.key];
+        const raw = getExportDisplayCell(dataset, rowIndex, column.key);
         if (raw instanceof Date) {
           if (Number.isNaN(raw.getTime())) return null;
           return {
-            value: raw,
+            value: toExportExcelDate(raw),
             type: Date,
-            format: "yyyy-mm-dd hh:mm:ss",
+            format: 'yyyy-mm-dd hh:mm:ss "UTC+08:00"',
             align: "center" as const,
           };
         }
@@ -92,9 +94,9 @@ function buildSheet(
 
   const widths = dataset.columns.map((column) => {
     let maxLength = getColumnLabel(column, locale).length;
-    for (const row of dataset.rows.slice(0, 200)) {
-      const value = row[column.key];
-      const length = value instanceof Date ? 19 : String(value ?? "").length;
+    for (const [rowIndex] of dataset.rows.slice(0, 200).entries()) {
+      const value = getExportDisplayCell(dataset, rowIndex, column.key);
+      const length = value instanceof Date ? 29 : String(value ?? "").length;
       if (length > maxLength) maxLength = length;
     }
     return { width: Math.min(Math.max(maxLength + 4, 12), 48) };

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowDown, ArrowUp, ArrowDownToLine, ArrowUpFromLine, GitCompareArrows, Globe2, Laptop, Link2, Minus, RefreshCw } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowDownToLine, ArrowUpFromLine, ChevronRight, GitCompareArrows, Globe2, Laptop, Link2, Minus, RefreshCw } from "lucide-react";
 import type { TrafficComparisonRow } from "@neko-master/shared";
 import { api, type TimeRange } from "@/lib/api";
 import { getComparisonQueryKey } from "@/lib/stats-query-keys";
@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Favicon } from "@/components/common";
+import { DeviceDomainComparisonDialog, type DeviceComparisonSelection } from "./device-domain-comparison-dialog";
 
 function growthWidth(row: TrafficComparisonRow, rows: TrafficComparisonRow[]): string {
   const max = Math.max(1, ...rows.map(item => item.currentBytes - item.baselineBytes));
@@ -23,6 +24,7 @@ export function ComparisonContent({ activeBackendId, timeRange, autoRefresh }: {
   const t = useTranslations("comparison");
   const locale = useLocale();
   const [preset, setPreset] = useState<ComparisonPreset>("today");
+  const [selectedDevice, setSelectedDevice] = useState<DeviceComparisonSelection | null>(null);
   const windows = getComparisonWindows(preset, timeRange);
   const query = useQuery({
     queryKey: getComparisonQueryKey(activeBackendId, windows?.current, windows?.baseline),
@@ -32,6 +34,9 @@ export function ComparisonContent({ activeBackendId, timeRange, autoRefresh }: {
     refetchInterval: autoRefresh ? 60_000 : false,
   });
   const data = query.data;
+  const openDevice = (row: TrafficComparisonRow) => {
+    if (activeBackendId && data) setSelectedDevice({ backendId: activeBackendId, sourceIP: row.key, name: row.displayName || row.key, current: data.currentRange, baseline: data.baselineRange });
+  };
   const dateTime = (value: string) => new Date(value).toLocaleString(locale, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
   const renderChange = (current: number, baseline: number, bytes = true) => {
     const { delta, percent } = getTrafficChange(current, baseline);
@@ -96,14 +101,17 @@ export function ComparisonContent({ activeBackendId, timeRange, autoRefresh }: {
           <div className="flex flex-wrap items-center justify-between gap-2"><h3 id="comparison-devices-title" className="flex items-center gap-2 text-base font-semibold"><Laptop className="h-4 w-4 text-muted-foreground" />{t("deviceGrowth")}</h3><span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">{t("deviceCount", { count: data.devices.length })}</span></div>
           <p className="text-xs text-muted-foreground">{t("rankingHint")}</p>
           {!data.devices.length ? emptyGrowth : <div className="flex flex-wrap gap-3">
-            {data.devices.map((row, index) => <Card key={row.key} className={cn("min-w-0 flex-[1_1_17rem] gap-0 py-0 shadow-xs", index === 0 && "border-primary/25")}>
+            {data.devices.map((row, index) => <Card key={row.key} role="button" tabIndex={0}
+              aria-label={t("viewDeviceDomains", { name: row.displayName || row.key })} onClick={() => openDevice(row)}
+              onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDevice(row); } }}
+              className={cn("min-w-0 flex-[1_1_17rem] cursor-pointer gap-0 py-0 shadow-xs outline-none transition-colors hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring", index === 0 && "border-primary/25")}>
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-start gap-2.5"><span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold tabular-nums", index === 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{index + 1}</span>
                   <div className="min-w-0 flex-1"><p className="break-all text-sm font-medium leading-5">{row.displayName || row.key}</p>{row.displayName && <p className="mt-0.5 text-xs text-muted-foreground">{row.key}</p>}</div>
                   {row.groupName && <span className="max-w-[35%] break-all rounded-md bg-muted px-2 py-1 text-[10px] leading-tight text-muted-foreground">{row.groupName}</span>}
                 </div>
                 <div className="flex flex-wrap items-end justify-between gap-2"><div><p className="text-[10px] text-muted-foreground">{t("current")}</p><p className="mt-0.5 text-xl font-semibold tabular-nums">{formatBytes(row.currentBytes)}</p></div>{renderChange(row.currentBytes, row.baselineBytes)}</div>
-                <div className="space-y-2"><div className="h-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary/75" style={{ width: growthWidth(row, data.devices) }} /></div><p className="text-[11px] text-muted-foreground">{t("baseline")}: <span className="tabular-nums">{formatBytes(row.baselineBytes)}</span></p></div>
+                <div className="space-y-2"><div className="h-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary/75" style={{ width: growthWidth(row, data.devices) }} /></div><div className="flex flex-wrap items-center justify-between gap-2 text-[11px]"><p className="text-muted-foreground">{t("baseline")}: <span className="tabular-nums">{formatBytes(row.baselineBytes)}</span></p><span className="inline-flex items-center gap-0.5 text-primary">{t("deviceDomainDetails")}<ChevronRight className="h-3 w-3" /></span></div></div>
               </CardContent>
             </Card>)}
           </div>}
@@ -124,5 +132,9 @@ export function ComparisonContent({ activeBackendId, timeRange, autoRefresh }: {
           </>}
         </Card>
       </>}
+    {selectedDevice?.backendId === activeBackendId && selectedDevice && <DeviceDomainComparisonDialog
+      key={`${selectedDevice.backendId}:${selectedDevice.sourceIP}:${selectedDevice.current.start}:${selectedDevice.current.end}:${selectedDevice.baseline.start}:${selectedDevice.baseline.end}`}
+      selection={selectedDevice} onClose={() => setSelectedDevice(null)}
+    />}
   </div>;
 }

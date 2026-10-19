@@ -6,7 +6,7 @@ import { buildExportCsv } from "./csv";
 afterEach(() => vi.unstubAllEnvs());
 
 describe("export timestamps", () => {
-  it.each(["Asia/Shanghai", "America/New_York"])("preserves UTC API timestamps in %s", (zone) => {
+  it.each(["Asia/Shanghai", "America/New_York"])("preserves instants while displaying Beijing time in %s", (zone) => {
     vi.stubEnv("TZ", zone);
     const raw = "2026-10-17T09:00:00";
     const stats = { totalUpload: 1, totalDownload: 2, totalConnections: 1, lastSeen: raw };
@@ -26,12 +26,13 @@ describe("export timestamps", () => {
     const meta = { ...range, endExclusive: true, backendName: "test", topN: 10, exportedAt: new Date(range.end) };
     const json = buildExportJsonPayload(datasets, meta, "en");
     for (const dataset of Object.values(json.datasets)) {
-      expect(dataset.rows[0].lastSeen).toBe("2026-10-17T09:00:00.000Z");
+      expect(dataset.rows[0].lastSeen).toBe("2026-10-17T17:00:00.000+08:00");
+      expect(Date.parse(String(dataset.rows[0].lastSeen))).toBe(Date.parse(`${raw}Z`));
     }
     expect(json.meta.range.endExclusive).toBe(true);
-    expect(buildExportCsv(datasets, meta, "en")).toContain("2026-10-17T09:00:00.000Z");
-    expect(buildExportCsv(datasets, meta, "en")).toContain(`[${range.start}, ${range.end})`);
-    // The same Date objects are passed to the XLSX writer.
+    expect(buildExportCsv(datasets, meta, "en")).toContain("2026-10-17T17:00:00.000+08:00");
+    expect(buildExportCsv(datasets, meta, "en")).toContain("[2026-10-17 16:00:00, 2026-10-17 18:00:00) (UTC+08:00)");
+    // Dataset dates retain their instant; timezone conversion is serialization-only.
     expect((datasets[0].rows[0].lastSeen as Date).getTime()).toBe(Date.parse(`${raw}Z`));
   });
 });

@@ -6,7 +6,7 @@ import { isIP } from 'node:net';
 import type { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import type { StatsService } from './stats.service.js';
 import type { TimeRange } from './stats.types.js';
-import type { DeviceProfile, TrafficEntityDimension } from '@neko-master/shared';
+import type { DeviceProfile, TrafficEntityDimension, DeviceDomainComparisonOptions } from '@neko-master/shared';
 
 // Extend Fastify instance to include statsService
 declare module 'fastify' {
@@ -109,6 +109,31 @@ function getTimeRange(request: FastifyRequest, reply: FastifyReply, isShowcaseMo
 
 const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Promise<void> => {
   const service = fastify.statsService;
+
+  fastify.get('/comparison/device-domains', { schema: { querystring: {
+    type: 'object', required: ['sourceIP', 'start', 'end', 'baselineStart', 'baselineEnd'],
+    properties: {
+      backendId: { type: 'string', pattern: '^[0-9]+$' }, sourceIP: { type: 'string', maxLength: 64 },
+      start: { type: 'string' }, end: { type: 'string' }, baselineStart: { type: 'string' }, baselineEnd: { type: 'string' },
+      offset: { type: 'integer', minimum: 0, maximum: 1000000, default: 0 }, limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+      search: { type: 'string', maxLength: 253, default: '' }, filter: { type: 'string', enum: ['all', 'increased', 'decreased', 'new'], default: 'all' },
+    },
+  } } }, async (request, reply) => {
+    const id = getBackendId(request, service);
+    if (id === null) return reply.status(404).send({ error: 'Backend not found' });
+    const query = request.query as DeviceDomainComparisonOptions & { sourceIP: string; start: string; end: string; baselineStart: string; baselineEnd: string };
+    if (fastify.authService.isShowcaseMode() && [query.start, query.baselineStart].some(start => Date.parse(start) < Date.now() - 86400000)) {
+      return reply.status(400).send({ error: 'Showcase history is limited to 24 hours' });
+    }
+    try {
+      return await service.getDeviceDomainComparisonWithRouting(id, query.sourceIP,
+        { start: query.start, end: query.end }, { start: query.baselineStart, end: query.baselineEnd }, query);
+    } catch (error: unknown) {
+      if (error instanceof RangeError) return reply.status(400).send({ error: error.message });
+      if (error instanceof Error && error.message === 'Backend not found') return reply.status(404).send({ error: error.message });
+      throw error;
+    }
+  });
 
   fastify.get('/trend/entity-daily', { schema: { querystring: {
     type: 'object', required: ['dimension', 'value', 'start', 'end'],

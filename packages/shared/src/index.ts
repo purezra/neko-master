@@ -119,6 +119,26 @@ export interface TrafficComparisonRow {
   groupName?: string;
 }
 
+export interface DeviceDomainComparisonOptions {
+  offset: number;
+  limit: number;
+  search: string;
+  filter: 'all' | 'increased' | 'decreased' | 'new';
+}
+
+export interface DeviceDomainComparisonPage {
+  rows: TrafficComparisonRow[];
+  total: number;
+  currentBytes: number;
+  baselineBytes: number;
+}
+
+export interface DeviceDomainComparison extends DeviceDomainComparisonPage {
+  device: DeviceProfile;
+  currentRange: ComparisonRange;
+  baselineRange: ComparisonRange;
+}
+
 export interface TrafficComparisonTotals {
   totalUpload: number;
   totalDownload: number;
