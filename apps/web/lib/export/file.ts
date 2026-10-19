@@ -45,6 +45,8 @@ export interface ExportFileMeta {
   start: string;
   end: string;
   endExclusive?: boolean;
+  /** The user's selection, used for the filename; start/end remain the actual data interval. */
+  requestedRange?: { start: string; end: string };
   topN: number;
   exportedAt: Date;
 }
@@ -55,12 +57,15 @@ export function formatExportRange(meta: ExportFileMeta): string {
 }
 
 export function getExportFileStem(meta: ExportFileMeta): string {
-  const stamp = (value: Date | string) => formatExportTimestamp(value).slice(0, 23).replace(/[-:.]/g, "").replace("T", "-");
+  const stamp = (value: string) => formatExportTimestamp(value).slice(0, 16).replace(/[-:]/g, "").replace("T", "-");
   const backend = (meta.backendName || "backend")
-    .replace(/[<>:"/\\|?*]|\p{Cc}/gu, "_")
     .trim()
+    .replace(/\s+(?:网关|gateway)$/iu, "")
+    .replace(/[<>:"/\\|?*]|\p{Cc}/gu, "_")
+    .replace(/\s+/g, "_")
     .slice(0, 40) || "backend";
-  return `neko-master-${backend}-${stamp(meta.start).slice(0, 15)}_to_${stamp(meta.end).slice(0, 15)}-UTC+0800-exported-${stamp(meta.exportedAt)}`;
+  const range = meta.requestedRange ?? meta;
+  return `neko-master-${backend}_${stamp(range.start)}_${stamp(range.end)}`;
 }
 
 export function getExportFileName(

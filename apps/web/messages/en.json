@@ -584,7 +584,9 @@
     }
   },
   "export": {
-    "timeZoneHint": "Export contents and filenames use China Standard Time (UTC+08:00).",
+    "timeZoneHint": "All times use China Standard Time (UTC+08:00). Filenames use the selected range; file contents state the actual statistics range.",
+    "selectedRange": "Selected range: {start} ~ {end}",
+    "hourAlignmentHint": "This export uses complete hours. Both boundaries round down to the hour; the unfinished hour remains for the next export.",
     "title": "Export Data",
     "description": "Pick a time range and datasets, then export traffic analytics as JSON, CSV, or Excel.",
     "currentRange": "Actual export range: {start} ~ {end} (end exclusive)",

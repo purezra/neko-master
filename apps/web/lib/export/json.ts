@@ -7,6 +7,7 @@ export interface ExportJsonPayload {
     version: string;
     backend: string;
     range: { start: string; end: string; endExclusive: boolean };
+    requestedRange?: { start: string; end: string };
     topN: number;
     exportedAt: string;
     timeZone: string;
@@ -37,6 +38,10 @@ export function buildExportJsonPayload(
       version: process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0",
       backend: meta.backendName,
       range: { start: formatExportTimestamp(meta.start), end: formatExportTimestamp(meta.end), endExclusive: !!meta.endExclusive },
+      ...(meta.requestedRange ? { requestedRange: {
+        start: formatExportTimestamp(meta.requestedRange.start),
+        end: formatExportTimestamp(meta.requestedRange.end),
+      } } : {}),
       topN: meta.topN,
       exportedAt: formatExportTimestamp(meta.exportedAt),
       timeZone: EXPORT_TIME_ZONE,

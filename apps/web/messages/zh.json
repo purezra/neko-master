@@ -584,7 +584,9 @@
     }
   },
   "export": {
-    "timeZoneHint": "导出内容和文件名统一使用北京时间（UTC+08:00）。",
+    "timeZoneHint": "时间均为北京时间（UTC+08:00）。文件名使用所选范围，文件内容注明实际统计范围。",
+    "selectedRange": "所选范围：{start} ~ {end}",
+    "hourAlignmentHint": "本次按完整小时统计，起止时间均向下对齐到整点；尚未结束的小时留待下次导出。",
     "title": "导出数据",
     "description": "选择时间段与数据项，将流量统计导出为 JSON、CSV 或 Excel 文件。",
     "currentRange": "实际导出范围：{start} ~ {end}（不含结束时间）",

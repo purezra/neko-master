@@ -16,6 +16,11 @@ describe("export time boundaries", () => {
     expect(result.range).toEqual({ start: "2026-10-17T09:00:00.000Z", end: "2026-10-18T09:00:00.000Z" });
     expect(result.queryRange.end).toBe("2026-10-18T08:59:59.999Z");
   });
+  it("explains the selected 10:54 versus actual 10:00 boundaries for a 30-day export", () => {
+    const result = getExportWindow({ start: "2026-09-19T10:54:00+08:00", end: "2026-10-19T10:54:00+08:00" }, Date.parse("2026-10-19T10:54:02+08:00"))!;
+    expect(result.range).toEqual({ start: "2026-09-19T02:00:00.000Z", end: "2026-10-19T02:00:00.000Z" });
+    expect(result.queryRange.end).toBe("2026-10-19T01:59:59.999Z");
+  });
 
   it("resumes without re-reading the last hour", () => {
     const next = getExportContinuationRange("2026-10-17T09:00:00Z", now)!;

@@ -119,6 +119,10 @@ export function ExportContent({
   const noneSelected = selectedCount === 0;
   const exportWindow = useMemo(() => getExportWindow(timeRange), [timeRange]);
   const exportRange = exportWindow?.range;
+  const hourlyAlignment = !!exportRange &&
+    Date.parse(timeRange.end) - Date.parse(timeRange.start) > 6 * 60 * 60 * 1000 &&
+    (formatBeijingDateTime(exportRange.start) !== formatBeijingDateTime(timeRange.start) ||
+      formatBeijingDateTime(exportRange.end) !== formatBeijingDateTime(timeRange.end));
   const continuationRange = lastExport?.endExclusive
     ? getExportContinuationRange(lastExport.end)
     : null;
@@ -175,6 +179,7 @@ export function ExportContent({
       start: exportRange.start,
       end: exportRange.end,
       endExclusive: true,
+      requestedRange: { ...timeRange },
       topN,
       exportedAt: new Date(),
     };
@@ -228,7 +233,7 @@ export function ExportContent({
       <Card className="overflow-hidden">
         <CardContent className="p-5 sm:p-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex items-start gap-4">
+            <div className="flex min-w-0 flex-1 items-start gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Download className="h-5 w-5" />
               </div>
@@ -238,15 +243,22 @@ export function ExportContent({
                   {t("description")}
                 </p>
                 <p className="pt-1 text-xs text-muted-foreground/80">
+                  {t("selectedRange", {
+                    start: formatBeijingDateTime(timeRange.start),
+                    end: formatBeijingDateTime(timeRange.end),
+                  })}
+                </p>
+                <p className="text-xs text-muted-foreground/80">
                   {exportRange ? t("currentRange", {
                     start: formatBeijingDateTime(exportRange.start),
                     end: formatBeijingDateTime(exportRange.end),
                   }) : t("noCompleteBuckets")}
                 </p>
+                {hourlyAlignment && <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">{t("hourAlignmentHint")}</p>}
                 <p className="text-xs text-muted-foreground/80">{t("timeZoneHint")}</p>
               </div>
             </div>
-            <div className="flex flex-col items-start gap-2 sm:items-end">
+            <div className="flex max-w-full flex-col items-start gap-2 sm:items-end lg:max-w-sm">
               <TimeRangePicker value={timeRange} onChange={onTimeRangeChange} />
               <span className="text-xs text-muted-foreground">
                 {t("rangeHint")}
@@ -314,7 +326,7 @@ export function ExportContent({
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* Dataset selection */}
         <Card>
           <CardHeader className="pb-3">
@@ -386,7 +398,7 @@ export function ExportContent({
                 <Tabs
                   value={String(topN)}
                   onValueChange={(value) => setTopN(Number(value) as ExportTopN)}>
-                  <TabsList className="h-8">
+                  <TabsList className="h-auto min-h-8 max-w-full flex-wrap">
                     {EXPORT_TOP_N_OPTIONS.map((option) => (
                       <TabsTrigger
                         key={option}

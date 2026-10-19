@@ -29,7 +29,7 @@ Intervals are consecutive 24-hour windows anchored at the selected start, rather
 
 ## Export formatting
 
-Export dates and filenames use Asia/Shanghai (UTC+08:00), independent of the browser/server time zone. Filenames identify the gateway, actual statistics interval and export time. Excel dates store Beijing wall-clock values with an explicit UTC+08:00 display format; CSV/JSON timestamps retain the same instant with a +08:00 offset. Excel/CSV traffic values use KB below 1 MiB and MB below 1 GiB (two fixed decimals), then GB (four fixed decimals). Counts stay numeric; JSON byte fields retain raw bytes for processing.
+Export dates and filenames use Asia/Shanghai (UTC+08:00), independent of the browser/server time zone. Short filenames identify the gateway and selected range to the minute, for example `neko-master-OpenClash_20260919-1054_20261019-1054.xlsx`; a generic trailing ` 网关` or ` Gateway` is omitted. The page displays both selected and actual ranges and explains complete-hour alignment. File contents and continuation cursors retain the actual statistics interval; JSON also includes the selected range as `requestedRange`. Excel dates store Beijing wall-clock values with an explicit UTC+08:00 display format; CSV/JSON timestamps retain the same instant with a +08:00 offset. Excel/CSV traffic values use KB below 1 MiB and MB below 1 GiB (two fixed decimals), then GB (four fixed decimals). Counts stay numeric; JSON byte fields retain raw bytes for processing.
 
 ## Branding and deployment
 
