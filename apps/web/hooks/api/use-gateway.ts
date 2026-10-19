@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { QUERY_CONFIG } from "@/lib/query-config";
 
 const PROVIDERS_KEY = "gatewayProviders";
 const PROXIES_KEY = "gatewayProxies";

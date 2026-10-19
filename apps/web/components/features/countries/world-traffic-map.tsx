@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  type MapGeography,
   ComposableMap,
   Geographies,
   Geography,
@@ -107,12 +108,12 @@ export function WorldTrafficMap({ data }: WorldTrafficMapProps) {
   }, [data]);
 
   // Get color for a geography
-  const getFillColor = (geo: any) => {
+  const getFillColor = (geo: MapGeography) => {
     const geoName = geo.properties.name;
     const isoCode = geo.properties.ISO_A2 || geo.properties.iso_a2;
 
     // Try to find country by ISO code first, then by name
-    let countryData = countryMap.get(isoCode);
+    let countryData = countryMap.get(isoCode ?? "");
     if (!countryData) {
       countryData = countryMap.get(geoName);
     }
@@ -131,17 +132,17 @@ export function WorldTrafficMap({ data }: WorldTrafficMapProps) {
   };
 
   // Handle mouse enter
-  const handleMouseEnter = (geo: any, event: any) => {
+  const handleMouseEnter = (geo: MapGeography, event: React.MouseEvent<SVGPathElement>) => {
     const geoName = geo.properties.name;
     const isoCode = geo.properties.ISO_A2 || geo.properties.iso_a2;
 
-    let countryData = countryMap.get(isoCode);
+    let countryData = countryMap.get(isoCode ?? "");
     if (!countryData) {
       countryData = countryMap.get(geoName);
     }
 
     if (countryData && countryData.country !== "LOCAL") {
-      const rect = event.target.getBoundingClientRect();
+      const rect = event.currentTarget.getBoundingClientRect();
       setTooltipData({
         country: countryName(countryData.country),
         traffic: countryData.totalDownload + countryData.totalUpload,

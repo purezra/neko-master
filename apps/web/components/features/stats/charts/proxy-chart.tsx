@@ -61,8 +61,9 @@ function withAlpha(hex: string, alpha: number): string {
 }
 
 // Custom label renderer to prevent text wrapping in SVG
-function renderCustomBarLabel(props: any) {
+function renderCustomBarLabel(props: import("recharts").LabelProps) {
   const { x, y, width, value, height } = props;
+  if (typeof x !== "number" || typeof y !== "number" || typeof width !== "number" || typeof height !== "number") return <></>;
   return (
     <text
       x={x + width + 5}
@@ -72,7 +73,7 @@ function renderCustomBarLabel(props: any) {
       dominantBaseline="central"
       textAnchor="start"
       style={{ fontVariantNumeric: "tabular-nums" }}>
-      {formatBytes(value, 0)}
+      {formatBytes(Number(value) || 0, 0)}
     </text>
   );
 }
@@ -83,7 +84,7 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
   const commonT = useTranslations("stats");
   const [topN, setTopN] = useState<TopOption>(10);
   // Track whether this is the initial render to only animate on first load
-  const hasRenderedRef = useRef(false);
+  const [hasRendered, setHasRendered] = useState(false);
   // Track container width to hide labels on small screens
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -165,18 +166,20 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
       download: domain.totalDownload,
       upload: domain.totalUpload,
     }));
-    // After first data load, mark as rendered so subsequent updates skip animation
-    if (result.length > 0) {
-      setTimeout(() => {
-        hasRenderedRef.current = true;
-      }, 800);
-    }
     return result;
   }, [domains, DOMAIN_COLORS]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const hasData = chartData.length > 0;
+  useEffect(() => {
+    if (!hasData || hasRendered) return;
+    const timer = setTimeout(() => setHasRendered(true), 800);
+    return () => clearTimeout(timer);
+  }, [hasData, hasRendered]);
+
+  const renderTooltip = ({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{payload?: unknown}> }) => {
     if (active && payload && payload.length) {
-      const item = payload[0].payload;
+      const item = payload[0].payload as (typeof chartData)[number] | undefined;
+      if (!item) return null;
       return (
         <div className="max-w-[min(24rem,calc(100vw-2rem))] bg-background border border-border p-3 rounded-lg shadow-lg">
           <div className="flex items-center gap-2 mb-2">
@@ -288,7 +291,7 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
                 interval={0}
               />
               <Tooltip
-                content={<CustomTooltip />}
+                content={renderTooltip}
                 cursor={{ fill: "rgba(128, 128, 128, 0.1)" }}
               />
               <Bar
@@ -296,7 +299,7 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
                 stackId="traffic"
                 radius={[0, 0, 0, 0]}
                 maxBarSize={config.barSize}
-                isAnimationActive={!hasRenderedRef.current}
+                isAnimationActive={!hasRendered}
                 animationDuration={600}>
                 {chartData.map((entry, index) => (
                   <Cell
@@ -310,7 +313,7 @@ export function TopDomainsChart({ data, activeBackendId, timeRange }: TopDomains
                 stackId="traffic"
                 radius={[0, 4, 4, 0]}
                 maxBarSize={config.barSize}
-                isAnimationActive={!hasRenderedRef.current}
+                isAnimationActive={!hasRendered}
                 animationDuration={600}>
                 {chartData.map((entry, index) => (
                   <Cell

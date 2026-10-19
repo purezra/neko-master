@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { RefreshCw } from "lucide-react";
 
 export function ServiceWorkerRegister() {

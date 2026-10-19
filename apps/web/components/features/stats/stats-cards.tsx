@@ -129,40 +129,19 @@ function RateLine({ value, label }: { value: number | null; label: string }) {
   );
 }
 
-export function StatsCards({ data, backendStatus, isLoading, error, rate }: StatsCardsProps) {
+function PlaceholderStatCard({
+  icon: Icon,
+  label,
+  color,
+  shimmer = false,
+}: {
+  icon: React.ElementType;
+  label: string;
+  color: string;
+  shimmer?: boolean;
+}) {
   const t = useTranslations("stats");
-  const locale = useLocale();
-  const { palette } = useThemePalette();
-  const cardColors = [
-    palette.colors.blue,
-    palette.colors.mauve,
-    palette.colors.pink,
-    palette.colors.green,
-    palette.colors.sky,
-    palette.colors.peach,
-  ];
-  const formatCount = (n: number) => n.toLocaleString(locale);
-  const summaryIsZero =
-    !data ||
-    ((data.totalDownload || 0) === 0 &&
-      (data.totalUpload || 0) === 0 &&
-      (data.totalConnections || 0) === 0 &&
-      (data.totalDomains || 0) === 0 &&
-      (data.totalRules || 0) === 0);
-
-  const showUnavailablePlaceholder = backendStatus === "unhealthy" && summaryIsZero;
-
-  const PlaceholderStatCard = ({
-    icon: Icon,
-    label,
-    color,
-    shimmer = false,
-  }: {
-    icon: React.ElementType;
-    label: string;
-    color: string;
-    shimmer?: boolean;
-  }) => (
+  return (
     <div className="rounded-xl p-3.5 border bg-card shadow-xs flex flex-col">
       <div
         className={cn("w-8 h-8 rounded-md flex items-center justify-center mb-2.5", shimmer && "animate-pulse")}
@@ -190,6 +169,31 @@ export function StatsCards({ data, backendStatus, isLoading, error, rate }: Stat
       </div>
     </div>
   );
+}
+
+export function StatsCards({ data, backendStatus, isLoading, error, rate }: StatsCardsProps) {
+  const t = useTranslations("stats");
+  const locale = useLocale();
+  const { palette } = useThemePalette();
+  const cardColors = [
+    palette.colors.blue,
+    palette.colors.mauve,
+    palette.colors.pink,
+    palette.colors.green,
+    palette.colors.sky,
+    palette.colors.peach,
+  ];
+  const formatCount = (n: number) => n.toLocaleString(locale);
+  const summaryIsZero =
+    !data ||
+    ((data.totalDownload || 0) === 0 &&
+      (data.totalUpload || 0) === 0 &&
+      (data.totalConnections || 0) === 0 &&
+      (data.totalDomains || 0) === 0 &&
+      (data.totalRules || 0) === 0);
+
+  const showUnavailablePlaceholder = backendStatus === "unhealthy" && summaryIsZero;
+
 
   if (error && !isLoading) {
     return (

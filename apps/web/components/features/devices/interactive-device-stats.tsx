@@ -40,8 +40,6 @@ import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { useDeviceDomains, useDeviceIPs } from "@/hooks/api/use-devices";
 import type {
   DeviceStats,
-  DomainStats,
-  IPStats,
   StatsSummary,
 } from "@neko-master/shared";
 
@@ -54,8 +52,9 @@ interface InteractiveDeviceStatsProps {
 }
 const DEVICE_DETAIL_WS_MIN_PUSH_MS = 3_000;
 
-function renderCustomBarLabel(props: any) {
+function renderCustomBarLabel(props: import("recharts").LabelProps) {
   const { x, y, width, value, height } = props;
+  if (typeof x !== "number" || typeof y !== "number" || typeof width !== "number" || typeof height !== "number") return <></>;
   return (
     <text
       x={x + width + 6}
@@ -65,7 +64,7 @@ function renderCustomBarLabel(props: any) {
       dominantBaseline="central"
       textAnchor="start"
       style={{ fontVariantNumeric: "tabular-nums" }}>
-      {formatBytes(value, 0)}
+      {formatBytes(Number(value) || 0, 0)}
     </text>
   );
 }
@@ -84,7 +83,7 @@ export function InteractiveDeviceStats({
   const detailTimeRange = useStableTimeRange(timeRange, { roundToMinute: true });
   const queryClient = useQueryClient();
 
-  const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const [deviceChoice, setSelectedDevice] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("domains");
   const [detailPageSize, setDetailPageSize] = useState<PageSize>(10);
   const [showDomainBarLabels, setShowDomainBarLabels] = useState(true);
@@ -125,18 +124,11 @@ export function InteractiveDeviceStats({
     [chartData],
   );
 
-  useEffect(() => {
-    if (chartData.length === 0) {
-      setSelectedDevice(null);
-      return;
-    }
-    const exists =
-      !!selectedDevice &&
-      chartData.some((item) => item.rawName === selectedDevice);
-    if (!exists) {
-      setSelectedDevice(chartData[0].rawName);
-    }
-  }, [chartData, selectedDevice]);
+
+
+  const selectedDevice = chartData.some(item => item.rawName === deviceChoice)
+    ? deviceChoice : chartData[0]?.rawName ?? null;
+  if (deviceChoice !== selectedDevice) setSelectedDevice(selectedDevice);
 
   const wsDetailEnabled = autoRefresh && !!activeBackendId && !!selectedDevice;
   const { status: wsDetailStatus } = useStatsWebSocket({
@@ -193,7 +185,7 @@ export function InteractiveDeviceStats({
     enabled: !wsDetailEnabled || wsDetailStatus !== "connected",
   });
 
-  const deviceDomains = domainsData ?? [];
+  const deviceDomains = useMemo(() => domainsData ?? [], [domainsData]);
   const deviceIPs = ipsData ?? [];
 
   const loading =

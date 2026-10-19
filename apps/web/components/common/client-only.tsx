@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
+
+const subscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 interface ClientOnlyProps {
   children: ReactNode;
@@ -15,11 +19,7 @@ interface ClientOnlyProps {
  * which would otherwise cause HTML hydration mismatches.
  */
 export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
 
   if (!isMounted) {
     return <>{fallback}</>;

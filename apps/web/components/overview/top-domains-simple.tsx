@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import React, { useMemo } from "react";
 import { Globe, ArrowRight, BarChart3, Link2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -145,7 +147,7 @@ export const TopDomainsSimple = React.memo(function TopDomainsSimple({
                   {faviconDisabled ? (
                     <Globe className="w-3 h-3 text-muted-foreground" />
                   ) : (
-                    <img
+                    <Image unoptimized width={48} height={48}
                       src={getFaviconForDomain(domain.domain)}
                       alt=""
                       className="w-4 h-4"

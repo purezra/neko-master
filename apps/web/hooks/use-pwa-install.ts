@@ -1,29 +1,29 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+const getStandalone = () => window.matchMedia("(display-mode: standalone)").matches ||
+  (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+const getServerStandalone = () => false;
+const subscribeStandalone = (notify: () => void) => {
+  const media = window.matchMedia("(display-mode: standalone)");
+  media.addEventListener("change", notify);
+  return () => media.removeEventListener("change", notify);
+};
+
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [installedByEvent, setIsInstalled] = useState(false);
+  const isStandalone = useSyncExternalStore(subscribeStandalone, getStandalone, getServerStandalone);
+  const isInstalled = isStandalone || installedByEvent;
 
   useEffect(() => {
-    // Check if already installed (standalone mode)
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone ===
-        true;
-
-    if (isStandalone) {
-      setIsInstalled(true);
-      return;
-    }
-
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);

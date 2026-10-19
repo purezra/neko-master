@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef, startTransition } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { BarChart3, Link2, Waypoints } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useThemePalette } from "@/lib/hooks/use-theme-palette";
@@ -9,11 +9,10 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell as BarCell, LabelList } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatBytes, formatNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { api, type GatewayRulesResponse, type TimeRange } from "@/lib/api";
+import { type TimeRange } from "@/lib/api";
 import { useStableTimeRange } from "@/lib/hooks/use-stable-time-range";
 import { useStatsWebSocket } from "@/lib/websocket";
 import {
@@ -66,8 +65,9 @@ interface RuleDomainChartItem {
 }
 
 // Custom label renderer for bar chart
-function renderCustomBarLabel(props: any) {
+function renderCustomBarLabel(props: import("recharts").LabelProps) {
   const { x, y, width, value, height } = props;
+  if (typeof x !== "number" || typeof y !== "number" || typeof width !== "number" || typeof height !== "number") return <></>;
   return (
     <text
       x={x + width + 6}
@@ -78,7 +78,7 @@ function renderCustomBarLabel(props: any) {
       textAnchor="start"
       style={{ fontVariantNumeric: "tabular-nums" }}
     >
-      {formatBytes(value, 0)}
+      {formatBytes(Number(value) || 0, 0)}
     </text>
   );
 }
@@ -128,10 +128,10 @@ export function InteractiveRuleStats({
     range: stableTimeRange,
     enabled: !data && !!activeBackendId,
   });
-  const rulesData = data ?? listData ?? [];
+  const rulesData = useMemo(() => data ?? listData ?? [], [data, listData]);
   const listLoading = !data && listQueryLoading && !listData;
   
-  const [selectedRule, setSelectedRule] = useState<string | null>(null);
+  const [ruleChoice, setSelectedRule] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("domains");
   const [detailPageSize, setDetailPageSize] = useState<PageSize>(10);
   const [showDomainBarLabels, setShowDomainBarLabels] = useState(true);
@@ -139,7 +139,6 @@ export function InteractiveRuleStats({
   // Ref for TOP DOMAINS card to detect container width
   const topDomainsCardRef = useRef<HTMLDivElement>(null);
   const topDomainsWidth = useContainerWidth(topDomainsCardRef);
-  const topDomainsItemCount = topDomainsWidth >= 500 ? 15 : 10;
 
   // Fetch Gateway rules to find zero-traffic rules.
   const { data: gatewayRules = null } = useGatewayRules({
@@ -236,6 +235,10 @@ export function InteractiveRuleStats({
     return new Set(chartData.map(item => item.rawName));
   }, [chartData]);
 
+  const selectedRule = chartData.some(item => item.rawName === ruleChoice)
+    ? ruleChoice : chartData[0]?.rawName ?? null;
+  if (ruleChoice !== selectedRule) setSelectedRule(selectedRule);
+
   const wsDetailEnabled = autoRefresh && !!activeBackendId && !!selectedRule;
   const { status: wsDetailStatus } = useStatsWebSocket({
     backendId: activeBackendId,
@@ -283,16 +286,7 @@ export function InteractiveRuleStats({
   const loading = !!selectedRule && (domainsLoading || ipsLoading) && ruleDomains.length === 0 && ruleIPs.length === 0;
 
   // Default select first rule when data loads
-  useEffect(() => {
-    if (chartData.length === 0) {
-      setSelectedRule(null);
-      return;
-    }
-    const exists = !!selectedRule && chartData.some((item) => item.rawName === selectedRule);
-    if (!exists) {
-      setSelectedRule(chartData[0].rawName);
-    }
-  }, [chartData, selectedRule]);
+
 
   const handleRuleClick = useCallback((rule: string) => {
     if (selectedRule !== rule) {

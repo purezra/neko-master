@@ -1,14 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
+
+const subscribe = () => () => {};
+const getSnapshot = () => window.navigator.userAgent.toLowerCase().includes("windows");
+const getServerSnapshot = () => false;
 
 export function useIsWindows(): boolean {
-  const [isWindows, setIsWindows] = useState(false);
-
-  useEffect(() => {
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    setIsWindows(userAgent.includes("windows"));
-  }, []);
-
-  return isWindows;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

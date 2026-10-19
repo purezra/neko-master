@@ -98,7 +98,6 @@ const MergedAnimatedFlowEdge = memo(function MergedAnimatedFlowEdge({
   const isToProxy = edgeData?.isToProxy;
   const isToDirect = edgeData?.isToDirect;
   const dimmed = edgeData?.dimmed;
-  const showAll = edgeData?.showAll;
   const zeroTraffic = edgeData?._zeroTraffic;
   const [edgePath] = getStraightPath({ sourceX, sourceY, targetX, targetY });
 
@@ -836,7 +835,7 @@ function FlowRenderer({
     return () => {
       cancelled = true;
     };
-  }, [data, activeIndices, showAll, structureKey, setNodes, setEdges, fitView]);
+  }, [data, activeIndices, showAll, structureKey, setNodes, setEdges, fitView, selectedRule]);
 
   // Called when ReactFlow instance is ready — execute any pending fitView
   const handleInit = useCallback(() => {
@@ -913,7 +912,11 @@ const MemoizedFlowRenderer = memo(FlowRenderer);
 
 // ---------- Main component ----------
 
-function UnifiedRuleChainFlowInner({
+function UnifiedRuleChainFlowInner(props: UnifiedRuleChainFlowProps) {
+  return <RuleChainFlowContent key={props.activeBackendId ?? "none"} {...props} />;
+}
+
+function RuleChainFlowContent({
   selectedRule,
   activeBackendId,
   timeRange,
@@ -1071,12 +1074,7 @@ function UnifiedRuleChainFlowInner({
 
     let cancelled = false;
     const requestId = ++requestIdRef.current;
-    const backendChanged = prevBackendRef.current !== activeBackendId;
-    const shouldShowLoading = !hasLoadedRef.current || backendChanged;
-    if (shouldShowLoading) {
-      setLoading(true);
-    }
-    setError(null);
+    const shouldShowLoading = !hasLoadedRef.current;
 
     async function loadFlows() {
       try {
@@ -1103,17 +1101,6 @@ function UnifiedRuleChainFlowInner({
     };
   }, [activeBackendId, stableRange, useHttpFallback, commitChainFlowData, retryNonce]);
 
-  useEffect(() => {
-    if (!wsEnabled) {
-      return;
-    }
-    const backendChanged = prevBackendRef.current !== activeBackendId;
-    if (backendChanged) {
-      setLoading(true);
-      setError(null);
-    }
-  }, [activeBackendId, wsEnabled]);
-
   // Use React Query to fetch active chain info with caching
   const { data: gatewayProviders } = useGatewayProviders({ 
     activeBackendId, 
@@ -1137,7 +1124,7 @@ function UnifiedRuleChainFlowInner({
       console.error('[ChainFlow] resolveActiveChains error:', e);
       return null;
     }
-  }, [gatewayProviders, gatewayRules, gatewayProxies, activeBackendId]);
+  }, [gatewayProviders, gatewayRules, gatewayProxies]);
 
   // When user selects a different rule, auto-disable showAll
   useEffect(() => {

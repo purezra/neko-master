@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
@@ -88,7 +88,12 @@ interface DomainStatsTableProps {
   contextKey?: string | number;
 }
 
-export function DomainStatsTable({
+export function DomainStatsTable(props: DomainStatsTableProps) {
+  const context = JSON.stringify([props.activeBackendId, props.sourceIP, props.sourceChain, props.richExpand, props.ruleName, props.contextKey, props.mode]);
+  return <DomainStatsTableContent key={context} {...props} />;
+}
+
+function DomainStatsTableContent({
   domains,
   loading = false,
   title,
@@ -113,7 +118,6 @@ export function DomainStatsTable({
   totalValue,
   onPageChange,
   ruleName,
-  contextKey,
 }: DomainStatsTableProps) {
   const t = useTranslations("domains");
   const detailTimeRange = useStableTimeRange(timeRange);
@@ -139,27 +143,12 @@ export function DomainStatsTable({
     ? (mobileDetailDomain?.domain ?? null)
     : expandedDomain;
 
-  useEffect(() => {
-    // Context switch (backend/device/proxy/rule binding change): collapse.
-    setExpandedDomain(null);
-    setMobileDetailsOpen(false);
-    setMobileDetailDomain(null);
-  }, [activeBackendId, sourceIP, sourceChain, richExpand, ruleName, contextKey]);
+  const [previousPageSize, setPreviousPageSize] = useState(pageSize);
+  if (previousPageSize !== pageSize) {
+    setPreviousPageSize(pageSize);
+    if (!isRemoteMode) setInternalPage(1);
+  }
 
-  useEffect(() => {
-    if (!isRemoteMode) {
-      setInternalPage(1);
-      setInternalSearch("");
-      setInternalSortKey("totalDownload");
-      setInternalSortOrder("desc");
-    }
-  }, [contextKey, isRemoteMode]);
-
-  useEffect(() => {
-    if (!isRemoteMode) {
-      setInternalPage(1);
-    }
-  }, [pageSize, isRemoteMode]);
 
   const expandedDomainProxyQuery = useQuery({
     queryKey: getDomainProxyStatsQueryKey(
@@ -301,7 +290,7 @@ export function DomainStatsTable({
     }
   };
 
-  const SortIcon = ({ column }: { column: DomainSortKey }) => {
+  const renderSortIcon = ({ column }: { column: DomainSortKey }) => {
     if (sortKey !== column) {
       return <ArrowUpDown className="ml-1 h-3 w-3 text-muted-foreground" />;
     }
@@ -414,7 +403,7 @@ export function DomainStatsTable({
                 onClick={() => handleSort("domain")}
               >
                 {t("domain")}
-                <SortIcon column="domain" />
+                {renderSortIcon({ column: "domain" })}
               </div>
               {showProxyColumn && (
                 <div className="col-span-2 flex items-center">{t("proxy")}</div>
@@ -424,7 +413,7 @@ export function DomainStatsTable({
                 onClick={() => handleSort("totalDownload")}
               >
                 {t("download")}
-                <SortIcon column="totalDownload" />
+                {renderSortIcon({ column: "totalDownload" })}
               </div>
               <div
                 className={cn(
@@ -434,14 +423,14 @@ export function DomainStatsTable({
                 onClick={() => handleSort("totalUpload")}
               >
                 {t("upload")}
-                <SortIcon column="totalUpload" />
+                {renderSortIcon({ column: "totalUpload" })}
               </div>
               <div
                 className="col-span-1 flex items-center justify-end cursor-pointer hover:text-foreground transition-colors"
                 onClick={() => handleSort("totalConnections")}
               >
                 {t("conn")}
-                <SortIcon column="totalConnections" />
+                {renderSortIcon({ column: "totalConnections" })}
               </div>
               {showLastSeenColumn && (
                 <div className="col-span-1 flex items-center justify-end">

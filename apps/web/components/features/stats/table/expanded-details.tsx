@@ -188,7 +188,6 @@ function ProxyTrafficCards({
   proxyStats,
   totalDownload,
   totalUpload,
-  connLabel,
   showFullProxyChains = false,
 }: {
   proxyStats: ProxyTrafficStats[];

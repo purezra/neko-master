@@ -42,9 +42,10 @@ export function CountryTrafficChart({ data }: CountryTrafficChartProps) {
     return chartData.reduce((sum, item) => sum + item.value, 0);
   }, [chartData]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const renderTooltip = ({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{payload?: unknown}> }) => {
     if (active && payload && payload.length) {
-      const item = payload[0].payload;
+      const item = payload[0].payload as (typeof chartData)[number] | undefined;
+      if (!item) return null;
       return (
         <div className="glass-card p-3 rounded-lg border shadow-lg">
           <div className="flex items-center gap-2 mb-2">
@@ -101,7 +102,7 @@ export function CountryTrafficChart({ data }: CountryTrafficChartProps) {
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={renderTooltip} />
             </PieChart>
           </ResponsiveContainer>
         </div>

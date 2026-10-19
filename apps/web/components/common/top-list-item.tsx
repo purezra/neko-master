@@ -112,7 +112,6 @@ export function CompactTopItem({
   icon,
   title,
   value,
-  color = "var(--primary)",
 }: CompactTopItemProps) {
   const isTop3 = rank <= 3;
 

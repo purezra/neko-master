@@ -112,7 +112,6 @@ export function useDashboard(): UseDashboardReturn {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [autoRefreshTick, setAutoRefreshTick] = useState(0);
   const [showBackendDialog, setShowBackendDialog] = useState(false);
-  const [isFirstTime, setIsFirstTime] = useState(false);
   const [showAboutDialog, setShowAboutDialog] = useState(false);
 
   const stableTimeRange = useStableTimeRange(timeRange, {
@@ -162,7 +161,12 @@ export function useDashboard(): UseDashboardReturn {
     enabled: shouldFetch,
   });
 
-  const backends = backendsQuery.data ?? [];
+  const backends = useMemo(() => backendsQuery.data ?? [], [backendsQuery.data]);
+  const { refetch: refetchBackends } = backendsQuery;
+  const isFirstTime = shouldFetch && backendsQuery.isSuccess && backends.length === 0;
+  const [setupDismissed, setSetupDismissed] = useState(false);
+  const needsSetup = isFirstTime && !setupDismissed;
+  if (!isFirstTime && setupDismissed) setSetupDismissed(false);
   const activeBackend = useMemo(
     () => backends.find((backend) => backend.is_active) || backends[0] || null,
     [backends]
@@ -364,7 +368,7 @@ export function useDashboard(): UseDashboardReturn {
     async (backendId: number) => {
       try {
         await api.setActiveBackend(backendId);
-        const { data: latestBackends } = await backendsQuery.refetch();
+        const { data: latestBackends } = await refetchBackends();
         await refreshNow(true);
         
         // Check backend health after switching (use fresh data from refetch)
@@ -382,42 +386,15 @@ export function useDashboard(): UseDashboardReturn {
         console.error("Failed to switch backend:", err);
       }
     },
-    [backendsQuery.refetch, refreshNow, dashboardT]
+    [refetchBackends, refreshNow, dashboardT]
   );
 
   const handleBackendChange = useCallback(async () => {
-    await backendsQuery.refetch();
+    await refetchBackends();
     await refreshNow(true);
-  }, [backendsQuery.refetch, refreshNow]);
+  }, [refetchBackends, refreshNow]);
 
   // Effects
-
-  // Open setup dialog automatically when no backend is configured
-  useEffect(() => {
-    // Don't open backend dialog if we need to login
-    if (showLogin) return;
-    
-    if (backendsQuery.isError) return;
-    // Strictly check if data is present to avoid "empty" state during initial loading/idle
-    if (!backendsQuery.data && !backendsQuery.isSuccess) return;
-    if (backendsQuery.isLoading || backendsQuery.isFetching) return;
-    
-    if (backends.length === 0) {
-      setIsFirstTime(true);
-      setShowBackendDialog(true);
-      return;
-    }
-    if (isFirstTime) {
-      setIsFirstTime(false);
-    }
-  }, [
-    backends.length,
-    backendsQuery.isError,
-    backendsQuery.isFetching,
-    backendsQuery.isLoading,
-    isFirstTime,
-    showLogin,
-  ]);
 
   // Rolling presets: keep the time window moving
   useEffect(() => {
@@ -450,7 +427,7 @@ export function useDashboard(): UseDashboardReturn {
     timePreset,
     autoRefresh,
     isManualRefreshing,
-    showBackendDialog,
+    showBackendDialog: showBackendDialog || needsSetup,
     showAboutDialog,
     isFirstTime,
     autoRefreshTick,
@@ -473,7 +450,10 @@ export function useDashboard(): UseDashboardReturn {
     // Actions
     setActiveTab,
     setAutoRefresh,
-    setShowBackendDialog,
+    setShowBackendDialog: (open: boolean) => {
+      setShowBackendDialog(open);
+      if (!open && isFirstTime) setSetupDismissed(true);
+    },
     setShowAboutDialog,
     handleTimeRangeChange,
     handleSwitchBackend,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
@@ -83,7 +83,12 @@ interface IPStatsTableProps {
   contextKey?: string | number;
 }
 
-export function IPStatsTable({
+export function IPStatsTable(props: IPStatsTableProps) {
+  const context = JSON.stringify([props.activeBackendId, props.sourceIP, props.sourceChain, props.richExpand, props.ruleName, props.contextKey, props.mode]);
+  return <IPStatsTableContent key={context} {...props} />;
+}
+
+function IPStatsTableContent({
   ips,
   loading = false,
   title,
@@ -107,7 +112,6 @@ export function IPStatsTable({
   totalValue,
   onPageChange,
   ruleName,
-  contextKey,
 }: IPStatsTableProps) {
   const t = useTranslations("ips");
   const localizedName = useCountryName();
@@ -132,27 +136,12 @@ export function IPStatsTable({
   const detailIPKey = mobileDetailsOpen ? (mobileDetailIP?.ip ?? null) : expandedIP;
   const mobileDetailIPGradient = getIPGradient(mobileDetailIP?.ip ?? "0.0.0.0");
 
-  useEffect(() => {
-    // Context switch (backend/device/proxy/rule binding change): collapse.
-    setExpandedIP(null);
-    setMobileDetailsOpen(false);
-    setMobileDetailIP(null);
-  }, [activeBackendId, sourceIP, sourceChain, richExpand, ruleName, contextKey]);
+  const [previousPageSize, setPreviousPageSize] = useState(pageSize);
+  if (previousPageSize !== pageSize) {
+    setPreviousPageSize(pageSize);
+    if (!isRemoteMode) setInternalPage(1);
+  }
 
-  useEffect(() => {
-    if (!isRemoteMode) {
-      setInternalPage(1);
-      setInternalSearch("");
-      setInternalSortKey("totalDownload");
-      setInternalSortOrder("desc");
-    }
-  }, [contextKey, isRemoteMode]);
-
-  useEffect(() => {
-    if (!isRemoteMode) {
-      setInternalPage(1);
-    }
-  }, [pageSize, isRemoteMode]);
 
   const setEffectivePageSize = (size: PageSize) => {
     if (onPageSizeChange) {
@@ -285,7 +274,7 @@ export function IPStatsTable({
     }
   };
 
-  const SortIcon = ({ column }: { column: IPSortKey }) => {
+  const renderSortIcon = ({ column }: { column: IPSortKey }) => {
     if (sortKey !== column) return <ArrowUpDown className="ml-1 h-3 w-3 text-muted-foreground" />;
     return sortOrder === "asc" ? (
       <ArrowUp className="ml-1 h-3 w-3 text-primary" />
@@ -374,7 +363,7 @@ export function IPStatsTable({
                 onClick={() => handleSort("ip")}
               >
                 {t("ip")}
-                <SortIcon column="ip" />
+                {renderSortIcon({ column: "ip" })}
               </div>
               {showProxyColumn && (
                 <div className="col-span-2 flex items-center">{t("proxy")}</div>
@@ -385,21 +374,21 @@ export function IPStatsTable({
                 onClick={() => handleSort("totalDownload")}
               >
                 {t("download")}
-                <SortIcon column="totalDownload" />
+                {renderSortIcon({ column: "totalDownload" })}
               </div>
               <div
                 className="col-span-1 flex items-center justify-end cursor-pointer hover:text-foreground transition-colors"
                 onClick={() => handleSort("totalUpload")}
               >
                 {t("upload")}
-                <SortIcon column="totalUpload" />
+                {renderSortIcon({ column: "totalUpload" })}
               </div>
               <div
                 className="col-span-1 flex items-center justify-end cursor-pointer hover:text-foreground transition-colors"
                 onClick={() => handleSort("totalConnections")}
               >
                 {t("conn")}
-                <SortIcon column="totalConnections" />
+                {renderSortIcon({ column: "totalConnections" })}
               </div>
               <div className={cn(domainCountColumnClass, "flex items-center justify-end")}>
                 {t("domainCount")}

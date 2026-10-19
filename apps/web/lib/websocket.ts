@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import type { StatsSummary } from '@neko-master/shared';
 import type { TimeRange } from '@/lib/api';
 
@@ -59,7 +59,7 @@ function sameInstant(a?: string, b?: string): boolean {
 }
 
 /** True when the push carries a range that differs from the current subscription. */
-function isOtherRange(message: WebSocketMessage, range?: TimeRange): boolean {
+function isOtherRange(message: Pick<WebSocketMessage, 'start' | 'end'>, range?: TimeRange): boolean {
   if (!range || (message.start === undefined && message.end === undefined)) return false;
   return !sameInstant(message.start, range.start) || !sameInstant(message.end, range.end);
 }
@@ -113,7 +113,7 @@ type RuntimeConfig = {
 
 function getRuntimeConfig(): RuntimeConfig | undefined {
   if (typeof window === 'undefined') return undefined;
-  return (window as any).__RUNTIME_CONFIG__ as RuntimeConfig | undefined;
+  return (window as Window & { __RUNTIME_CONFIG__?: RuntimeConfig }).__RUNTIME_CONFIG__;
 }
 
 function normalizeWsUrl(rawUrl: string, runtime?: RuntimeConfig): string {
@@ -204,6 +204,19 @@ function summaryFieldsKey(fields?: SummaryField[]): string {
   return normalized?.join(',') || '';
 }
 
+/** Preserve legacy untagged pushes while rejecting data from an old subscription. */
+export function isMatchingStatsPush(
+  message: Pick<WebSocketMessage, 'backendId' | 'start' | 'end' | 'summaryFields'>,
+  subscription: { backendId?: number; range?: TimeRange; summaryFields?: SummaryField[] },
+): boolean {
+  if (message.backendId !== undefined && subscription.backendId !== undefined &&
+      message.backendId !== subscription.backendId) return false;
+  if (isOtherRange(message, subscription.range)) return false;
+  const expectedFields = summaryFieldsKey(subscription.summaryFields);
+  const incomingFields = summaryFieldsKey(message.summaryFields);
+  return !expectedFields || !incomingFields || expectedFields === incomingFields;
+}
+
 export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
   const {
     backendId,
@@ -247,7 +260,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
   );
   const summaryFieldsDependencyKey = normalizedSummaryFields?.join(',') || '';
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
-  const [lastMessage, setLastMessage] = useState<StatsSummary | null>(null);
+  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const [liveConnections, setLiveConnections] = useState<LiveConnection[]>([]);
   const [latency, setLatency] = useState<number | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -263,20 +276,18 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
   const onErrorRef = useRef(options.onError);
   const trackLastMessageRef = useRef(trackLastMessage);
   const summaryFieldsKeyRef = useRef(summaryFieldsDependencyKey);
-  const hasSummaryFieldsFilterRef = useRef(!!normalizedSummaryFields);
   const backendIdRef = useRef(backendId);
   const rangeRef = useRef(range);
-  onMessageRef.current = options.onMessage;
-  onConnectRef.current = options.onConnect;
-  onDisconnectRef.current = options.onDisconnect;
-  onErrorRef.current = options.onError;
-  trackLastMessageRef.current = trackLastMessage;
-  summaryFieldsKeyRef.current = summaryFieldsDependencyKey;
-  hasSummaryFieldsFilterRef.current = !!normalizedSummaryFields;
-  backendIdRef.current = backendId;
-  useEffect(() => {
+  useLayoutEffect(() => {
+    onMessageRef.current = options.onMessage;
+    onConnectRef.current = options.onConnect;
+    onDisconnectRef.current = options.onDisconnect;
+    onErrorRef.current = options.onError;
+    trackLastMessageRef.current = trackLastMessage;
+    summaryFieldsKeyRef.current = summaryFieldsDependencyKey;
+    backendIdRef.current = backendId;
     rangeRef.current = range;
-  }, [range]);
+  }, [options.onMessage, options.onConnect, options.onDisconnect, options.onError, trackLastMessage, summaryFieldsDependencyKey, normalizedSummaryFields, backendId, range]);
 
   const cleanup = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -299,7 +310,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
     }
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(function connectSocket() {
     if (
       wsRef.current?.readyState === WebSocket.OPEN ||
       wsRef.current?.readyState === WebSocket.CONNECTING
@@ -349,31 +360,21 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
             // Drop in-flight pushes from a previously subscribed backend —
             // without this a backend switch briefly writes the old backend's
             // data into the new backend's caches.
-            if (
-              message.backendId !== undefined &&
-              backendIdRef.current !== undefined &&
-              message.backendId !== backendIdRef.current
-            ) {
-              return;
-            }
-
-            // Likewise drop late pushes computed for a previous time range.
-            if (isOtherRange(message, rangeRef.current)) {
-              return;
-            }
-
-            if (hasSummaryFieldsFilterRef.current) {
-              const incomingSummaryFieldsKey = summaryFieldsKey(message.summaryFields);
-              if (
-                incomingSummaryFieldsKey &&
-                incomingSummaryFieldsKey !== summaryFieldsKeyRef.current
-              ) {
-                return;
-              }
-            }
+            if (!isMatchingStatsPush(message, {
+              backendId: backendIdRef.current,
+              range: rangeRef.current,
+              summaryFields: summaryFieldsKeyRef.current.split(',').filter(Boolean) as SummaryField[],
+            })) return;
 
             if (trackLastMessageRef.current) {
-              setLastMessage(message.data);
+              // Bind legacy untagged pushes to the subscription that received them.
+              setLastMessage({
+                ...message,
+                backendId: message.backendId ?? backendIdRef.current,
+                start: message.start ?? rangeRef.current?.start,
+                end: message.end ?? rangeRef.current?.end,
+                summaryFields: message.summaryFields ?? summaryFieldsKeyRef.current.split(',').filter(Boolean) as SummaryField[],
+              });
             }
             if (message.liveConnections) {
               setLiveConnections(message.liveConnections);
@@ -409,7 +410,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
         if (!opened && wsUrlIndexRef.current < wsUrls.length - 1) {
           wsUrlIndexRef.current += 1;
           reconnectTimerRef.current = setTimeout(() => {
-            connect();
+            connectSocket();
           }, 200);
           return;
         }
@@ -419,7 +420,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
         reconnectAttemptsRef.current++;
         console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
         reconnectTimerRef.current = setTimeout(() => {
-          connect();
+          connectSocket();
         }, delay);
       };
 
@@ -451,7 +452,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
       end: range?.end,
       minPushIntervalMs,
       includeSummary,
-      summaryFields: normalizedSummaryFields,
+      summaryFields: summaryFieldsDependencyKey ? summaryFieldsDependencyKey.split(",") : undefined,
       includeTrend,
       trendMinutes,
       trendBucketMinutes,
@@ -526,10 +527,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
   }, [cleanup]);
 
   useEffect(() => {
-    if (!enabled) {
-      disconnect();
-      return;
-    }
+    if (!enabled) return;
 
     reconnectAttemptsRef.current = 0;
     connect();
@@ -540,10 +538,11 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
   }, [enabled, connect, disconnect]);
 
   return {
-    status,
-    lastMessage,
-    liveConnections,
-    latency,
+    status: enabled ? status : "disconnected" as ConnectionStatus,
+    lastMessage: enabled && lastMessage && isMatchingStatsPush(lastMessage, { backendId, range, summaryFields })
+      ? lastMessage.data ?? null : null,
+    liveConnections: enabled ? liveConnections : [],
+    latency: enabled ? latency : null,
     connect,
     disconnect,
   };

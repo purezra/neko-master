@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Shield, Server, Loader2 } from "lucide-react";
+import { Check, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type VerifyPhase = "pending" | "success" | "error";
@@ -22,15 +22,10 @@ export function BackendVerifyAnimation({
   backendName,
   message,
 }: BackendVerifyAnimationProps) {
-  const [displayPhase, setDisplayPhase] = useState<VerifyPhase>("pending");
+  const displayPhase = show ? phase : "pending";
 
   useEffect(() => {
-    if (!show) {
-      setDisplayPhase("pending");
-      return;
-    }
-
-    setDisplayPhase(phase);
+    if (!show) return;
 
     // Auto-complete after showing result
     if (phase === "success" || phase === "error") {

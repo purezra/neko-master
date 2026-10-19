@@ -210,14 +210,12 @@ export function TimeRangePicker({
     setSelectedPreset(normalizedPreset);
   };
 
-  const syncDraftFromValue = () => syncDraftFromRange(value);
-
-  // Keep draft synced with external value except while actively editing custom
-  // range in the opened panel.
-  useEffect(() => {
-    if (open && selectedPreset === "custom") return;
-    syncDraftFromValue();
-  }, [value, open, selectedPreset]);
+  const draftSource = JSON.stringify([value.start, value.end, showDebugShortPresets]);
+  const [previousDraftSource, setPreviousDraftSource] = useState<string | null>(null);
+  if (!(open && selectedPreset === "custom") && previousDraftSource !== draftSource) {
+    setPreviousDraftSource(draftSource);
+    syncDraftFromRange(value);
+  }
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 639px)");
@@ -235,7 +233,7 @@ export function TimeRangePicker({
     if (!match) return t("defaultRange");
     if (match.value === "today") return t("today");
     return `${t("recentPrefix")} ${match.label}`;
-  }, [selectedPreset, value.start, value.end, localeCode, quickPresets, t]);
+  }, [selectedPreset, value.start, value.end, quickPresets, t]);
 
   const mobileDisplayText = useMemo(() => {
     if (selectedPreset === "custom") {
@@ -278,7 +276,6 @@ export function TimeRangePicker({
     setOpen(false);
   };
 
-  const [lockIcon, setLockIcon] = useState(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

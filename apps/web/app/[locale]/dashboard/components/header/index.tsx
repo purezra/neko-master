@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   Server,
   Radio,
@@ -107,7 +107,6 @@ interface HeaderProps {
 }
 
 export function Header({
-  backends,
   activeBackend,
   listeningBackends,
   backendStatus,
@@ -126,7 +125,6 @@ export function Header({
   locale,
   pathname,
   onNavigate,
-  activeTab,
   isLoading,
   isTransitioning,
   backendT,
@@ -141,17 +139,21 @@ export function Header({
   const themeT = useTranslations("theme");
   const aboutT = useTranslations("about");
 
-  const [showProgress, setShowProgress] = React.useState(false);
+  const [progressTail, setProgressTail] = React.useState(false);
+  const showProgress = !!isTransitioning || progressTail;
+  const [previousTransition, setPreviousTransition] = React.useState(isTransitioning);
+  if (previousTransition !== isTransitioning) {
+    setPreviousTransition(isTransitioning);
+    if (isTransitioning) setProgressTail(true);
+  }
 
   React.useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
-    if (isTransitioning) {
-      setShowProgress(true);
-    } else {
+    if (!isTransitioning) {
       // Add a small delay before hiding to let the animation play out a bit
       // and prevent it from flashing too quickly
       timeout = setTimeout(() => {
-        setShowProgress(false);
+        setProgressTail(false);
       }, 800);
     }
     return () => clearTimeout(timeout);

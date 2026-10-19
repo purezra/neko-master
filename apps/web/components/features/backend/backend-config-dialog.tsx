@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
@@ -106,7 +108,7 @@ function FaviconProviderPreview({
 
           {/* Provider Icon - Google */}
           <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden shrink-0">
-            <img
+            <Image unoptimized width={48} height={48}
               src="https://www.google.com/favicon.ico"
               alt="Google"
               className="w-6 h-6 object-contain"
@@ -131,7 +133,7 @@ function FaviconProviderPreview({
             <div
               key={domain}
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-              <img
+              <Image unoptimized width={48} height={48}
                 src={getFaviconUrl(domain, "google")}
                 alt={domain}
                 className="w-4 h-4 sm:w-5 sm:h-5 object-cover"
@@ -164,7 +166,7 @@ function FaviconProviderPreview({
 
           {/* Provider Icon - favicon.im */}
           <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0">
-            <img
+            <Image unoptimized width={48} height={48}
               src="https://favicon.im/favicon.im?larger=true"
               alt="favicon.im"
               className="w-6 h-6 object-contain"
@@ -189,7 +191,7 @@ function FaviconProviderPreview({
             <div
               key={domain}
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-              <img
+              <Image unoptimized width={48} height={48}
                 src={getFaviconUrl(domain, "faviconim")}
                 alt={domain}
                 className="w-4 h-4 sm:w-5 sm:h-5 object-cover"
@@ -640,6 +642,25 @@ function buildAgentQuickAddCommand(info: AgentBootstrapInfo, showToken = true): 
   return lines.join("\n");
 }
 
+function parseBackendRows(data: Awaited<ReturnType<typeof api.getBackends>>): Backend[] {
+  // Parse URL for display/form rendering
+  return data.map((b) => {
+    const parsed = parseBackendUrl(b.url);
+    return {
+      ...b,
+      type: b.type || "clash",
+      mode: parsed.mode,
+      host: parsed.host,
+      port:
+        parsed.mode === "direct"
+          ? Number.parseInt(parsed.port || DEFAULT_BACKEND_PORT, 10) ||
+            Number.parseInt(DEFAULT_BACKEND_PORT, 10)
+          : undefined,
+      agentId: parsed.agentId,
+    };
+  });
+}
+
 export function BackendConfigDialog({
   open,
   onOpenChange,
@@ -651,7 +672,7 @@ export function BackendConfigDialog({
   const commonT = useTranslations("common");
 
   const [backends, setBackends] = useState<Backend[]>([]);
-  const [backendsLoading, setBackendsLoading] = useState(false);
+  const [backendsLoading, setBackendsLoading] = useState(open);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [testingId, setTestingId] = useState<number | null>(null);
@@ -685,11 +706,6 @@ export function BackendConfigDialog({
   const [deleteBackendId, setDeleteBackendId] = useState<number | null>(null);
   const [clearLogsDialogOpen, setClearLogsDialogOpen] = useState(false);
   const [clearLogsDays, setClearLogsDays] = useState<number>(0);
-  const [clearBackendDataDialogOpen, setClearBackendDataDialogOpen] =
-    useState(false);
-  const [clearDataBackendId, setClearDataBackendId] = useState<number | null>(
-    null,
-  );
   const [agentBootstrapDialogOpen, setAgentBootstrapDialogOpen] =
     useState(false);
   const [agentBootstrapInfo, setAgentBootstrapInfo] =
@@ -704,7 +720,6 @@ export function BackendConfigDialog({
   const [errorMessage, setErrorMessage] = useState("");
 
   // Success Alert Dialog State
-
 
   // React Query Client
   const queryClient = useQueryClient();
@@ -751,49 +766,41 @@ export function BackendConfigDialog({
   const [showAddForm, setShowAddForm] = useState(false);
   const [autoOpenedAddDialog, setAutoOpenedAddDialog] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      loadBackends();
-      loadDbStats();
-      loadRetentionConfig();
-      loadGeoLookupConfig();
-    }
-  }, [open]);
+  const [previousOpen, setPreviousOpen] = useState(open);
+  if (previousOpen !== open) {
+    setPreviousOpen(open);
+    setAutoOpenedAddDialog(false);
+    if (open) setBackendsLoading(true);
+  }
+  if (open && isFirstTime && !backendsLoading && !autoOpenedAddDialog && backends.length === 0) {
+    setShowAddForm(true);
+    setAutoOpenedAddDialog(true);
+  }
 
   useEffect(() => {
-    if (!open || !isFirstTime || backendsLoading || autoOpenedAddDialog) return;
-    if (backends.length === 0) {
-      setShowAddForm(true);
-      setAutoOpenedAddDialog(true);
-    }
-  }, [open, isFirstTime, backendsLoading, backends.length, autoOpenedAddDialog]);
-
-  useEffect(() => {
-    if (!open) {
-      setAutoOpenedAddDialog(false);
-    }
+    if (!open) return;
+    let cancelled = false;
+    const load = async () => {
+      const results = await Promise.allSettled([
+        api.getBackends().then(data => { if (!cancelled) setBackends(parseBackendRows(data)); }).catch(error => console.error("Failed to load backends:", error)).finally(() => { if (!cancelled) setBackendsLoading(false); }),
+        api.getDbStats().then(stats => { if (!cancelled) setDbStats({ ...stats, sqliteSize: stats.sqliteSize ?? stats.size, clickhouseSize: stats.clickhouseSize ?? 0 }); }),
+        api.getRetentionConfig().then(config => { if (!cancelled) setRetentionConfig(config); }),
+        api.getGeoLookupConfig().then(config => { if (!cancelled) setGeoLookupConfig(config); }),
+      ]);
+      const sections = ["backends", "database stats", "retention config", "geo lookup config"];
+      results.forEach((result, index) => {
+        if (result.status === "rejected") console.error(`Failed to load ${sections[index]}:`, result.reason);
+      });
+    };
+    void load();
+    return () => { cancelled = true; };
   }, [open]);
 
   const loadBackends = async (silent = false) => {
     if (!silent) setBackendsLoading(true);
     try {
       const data = await api.getBackends();
-      // Parse URL for display/form rendering
-      const parsedData: Backend[] = data.map((b) => {
-        const parsed = parseBackendUrl(b.url);
-        return {
-          ...b,
-          type: b.type || "clash",
-          mode: parsed.mode,
-          host: parsed.host,
-          port:
-            parsed.mode === "direct"
-              ? Number.parseInt(parsed.port || DEFAULT_BACKEND_PORT, 10) ||
-                Number.parseInt(DEFAULT_BACKEND_PORT, 10)
-              : undefined,
-          agentId: parsed.agentId,
-        };
-      });
+      const parsedData = parseBackendRows(data);
       setBackends(parsedData);
     } catch (error) {
       console.error("Failed to load backends:", error);
@@ -816,24 +823,6 @@ export function BackendConfigDialog({
     }
   };
 
-  const loadRetentionConfig = async () => {
-    try {
-      const config = await api.getRetentionConfig();
-      setRetentionConfig(config);
-    } catch (error) {
-      console.error("Failed to load retention config:", error);
-    }
-  };
-
-  const loadGeoLookupConfig = async () => {
-    try {
-      const config = await api.getGeoLookupConfig();
-      setGeoLookupConfig(config);
-    } catch (error) {
-      console.error("Failed to load geo lookup config:", error);
-    }
-  };
-
   const handleUpdateGeoLookupConfig = async (
     updates: {
       provider?: GeoLookupProvider;
@@ -845,8 +834,8 @@ export function BackendConfigDialog({
       const result = await api.updateGeoLookupConfig(updates);
       setGeoLookupConfig(result.config);
       toast.success(t("geoLookupUpdated"));
-    } catch (error: any) {
-      toast.error(error.message || t("geoLookupUpdateFailed"));
+    } catch (error: unknown) {
+      toast.error((error instanceof Error && error.message) || t("geoLookupUpdateFailed"));
     } finally {
       setUpdatingGeoLookup(false);
     }
@@ -869,23 +858,6 @@ export function BackendConfigDialog({
 
   const selectedGeoLookupProvider =
     geoLookupConfig.effectiveProvider ?? geoLookupConfig.provider;
-
-  const handleUpdateRetention = async (
-    key: keyof RetentionConfig,
-    value: number | boolean,
-  ) => {
-    try {
-      setUpdatingRetention(true);
-      const newConfig = { ...retentionConfig, [key]: value };
-      await api.updateRetentionConfig(newConfig);
-      setRetentionConfig(newConfig);
-      toast.success(t("retentionUpdated"));
-    } catch (error: any) {
-      toast.error(error.message || t("retentionUpdateFailed"));
-    } finally {
-      setUpdatingRetention(false);
-    }
-  };
 
   // Check which preset matches current config
   const getActivePreset = (): PresetKey | "custom" => {
@@ -910,8 +882,8 @@ export function BackendConfigDialog({
       await api.updateRetentionConfig(newConfig);
       setRetentionConfig(newConfig);
       toast.success(t("retentionUpdated"));
-    } catch (error: any) {
-      toast.error(error.message || t("retentionUpdateFailed"));
+    } catch (error: unknown) {
+      toast.error((error instanceof Error && error.message) || t("retentionUpdateFailed"));
     } finally {
       setUpdatingRetention(false);
     }
@@ -930,8 +902,8 @@ export function BackendConfigDialog({
       await api.updateRetentionConfig(newConfig);
       setRetentionConfig(newConfig);
       toast.success(t("retentionUpdated"));
-    } catch (error: any) {
-      toast.error(error.message || t("retentionUpdateFailed"));
+    } catch (error: unknown) {
+      toast.error((error instanceof Error && error.message) || t("retentionUpdateFailed"));
     } finally {
       setUpdatingRetention(false);
     }
@@ -988,8 +960,8 @@ export function BackendConfigDialog({
           await onConfigComplete();
           onOpenChange(false);
         }
-      } catch (error: any) {
-        setErrorMessage(error.message || "Failed to create backend");
+      } catch (error: unknown) {
+        setErrorMessage((error instanceof Error && error.message) || "Failed to create backend");
         setErrorDialogOpen(true);
       } finally {
         setLoading(false);
@@ -1017,9 +989,9 @@ export function BackendConfigDialog({
         setVerifyPhase("error");
         setVerifyMessage(testResult.message || t("testFailed"));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setVerifyPhase("error");
-      setVerifyMessage(error.message || t("testFailed"));
+      setVerifyMessage((error instanceof Error && error.message) || t("testFailed"));
     }
   };
 
@@ -1053,10 +1025,10 @@ export function BackendConfigDialog({
           await onConfigComplete();
           onOpenChange(false);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         setShowVerifyAnimation(false);
         setPendingBackend(null);
-        setErrorMessage(error.message || "Failed to create backend");
+        setErrorMessage((error instanceof Error && error.message) || "Failed to create backend");
         setErrorDialogOpen(true);
       }
     } else {
@@ -1109,8 +1081,8 @@ export function BackendConfigDialog({
       setEditFormData(getInitialFormState());
       await loadBackends();
       await onBackendChange?.();
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to update backend");
+    } catch (error: unknown) {
+      setErrorMessage((error instanceof Error && error.message) || "Failed to update backend");
       setErrorDialogOpen(true);
     } finally {
       setLoading(false);
@@ -1134,8 +1106,8 @@ export function BackendConfigDialog({
       await onBackendChange?.();
       setDeleteDialogOpen(false);
       setDeleteBackendId(null);
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to delete backend");
+    } catch (error: unknown) {
+      setErrorMessage((error instanceof Error && error.message) || "Failed to delete backend");
       setErrorDialogOpen(true);
     } finally {
       setLoading(false);
@@ -1152,8 +1124,8 @@ export function BackendConfigDialog({
       await onBackendChange?.();
       // Show toast notification
       toast.success(t("switchSuccess"));
-    } catch (error: any) {
-      toast.error(error.message || t("switchFailed"));
+    } catch (error: unknown) {
+      toast.error((error instanceof Error && error.message) || t("switchFailed"));
     }
   };
 
@@ -1163,40 +1135,15 @@ export function BackendConfigDialog({
       await api.setBackendListening(id, listening);
       await loadBackends(true);
       await onBackendChange?.();
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to update listening state");
+    } catch (error: unknown) {
+      setErrorMessage((error instanceof Error && error.message) || "Failed to update listening state");
       setErrorDialogOpen(true);
     }
   };
 
   // Open clear backend data dialog
-  const openClearBackendDataDialog = (id: number) => {
-    setClearDataBackendId(id);
-    setClearBackendDataDialogOpen(true);
-  };
 
   // Handle clear backend data
-  const handleClearBackendData = async () => {
-    if (!clearDataBackendId) return;
-
-    setLoading(true);
-    try {
-      await api.clearBackendData(clearDataBackendId);
-      await loadDbStats();
-      await onBackendChange?.();
-      setClearBackendDataDialogOpen(false);
-      setClearDataBackendId(null);
-    } catch (error: any) {
-      setErrorMessage(
-        error.message ||
-          t("clearBackendDataError") ||
-          "Failed to clear backend data",
-      );
-      setErrorDialogOpen(true);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleTest = async (backend: Backend) => {
     setTestingId(backend.id);
@@ -1218,8 +1165,8 @@ export function BackendConfigDialog({
       }
       await loadBackends();
       await onBackendChange?.();
-    } catch (error: any) {
-      toast.error(error.message || "Test failed");
+    } catch (error: unknown) {
+      toast.error((error instanceof Error && error.message) || "Test failed");
     } finally {
       setTestingId(null);
     }
@@ -1240,8 +1187,8 @@ export function BackendConfigDialog({
       await onBackendChange?.();
       setClearLogsDialogOpen(false);
       toast.success(t("logsCleared"));
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to clear logs");
+    } catch (error: unknown) {
+      setErrorMessage((error instanceof Error && error.message) || "Failed to clear logs");
       setErrorDialogOpen(true);
     } finally {
       setClearingLogs(false);
@@ -1349,8 +1296,8 @@ export function BackendConfigDialog({
       // Invalidate auth state cache to trigger refetch
       queryClient.invalidateQueries({ queryKey: authKeys.state() });
       toast.success(t("auth.enabledSuccess"));
-    } catch (error: any) {
-      toast.error(error.message || t("auth.enableFailed"));
+    } catch (error: unknown) {
+      toast.error((error instanceof Error && error.message) || t("auth.enableFailed"));
     } finally {
       setAuthLoading(false);
     }
@@ -1371,8 +1318,8 @@ export function BackendConfigDialog({
       // Invalidate auth state cache to trigger refetch
       queryClient.invalidateQueries({ queryKey: authKeys.state() });
       toast.success(t("auth.disabledSuccess"));
-    } catch (error: any) {
-      toast.error(error.message || t("auth.disableFailed"));
+    } catch (error: unknown) {
+      toast.error((error instanceof Error && error.message) || t("auth.disableFailed"));
     } finally {
       setAuthLoading(false);
     }
@@ -1398,8 +1345,8 @@ export function BackendConfigDialog({
         } else {
             throw new Error(res.message || commonT("error"));
         }
-    } catch (error: any) {
-        setErrorMessage(error.message || t("auth.updateTokenFailed"));
+    } catch (error: unknown) {
+        setErrorMessage((error instanceof Error && error.message) || t("auth.updateTokenFailed"));
         setErrorDialogOpen(true);
     } finally {
         setAuthLoading(false);
@@ -1682,7 +1629,7 @@ export function BackendConfigDialog({
                               className="w-4 h-4 rounded-sm bg-white/90 flex items-center justify-center p-0.5"
                               title={backend.type === 'surge' ? 'Surge' : 'Clash / Mihomo'}
                             >
-                              <img
+                              <Image unoptimized width={48} height={48}
                                 src={backend.type === 'surge' ? '/icons/icon-surge.png' : '/icons/icon-clash.png'}
                                 alt={backend.type === 'surge' ? 'Surge' : 'Clash'}
                                 className="w-full h-full object-contain"
@@ -2905,8 +2852,6 @@ export function BackendConfigDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-
 
       {/* Confirm Enable Auth Dialog */}
       <AlertDialog

@@ -61,11 +61,12 @@ function getProxyCountryCode(name: string): string {
   return extractCountryCodeFromText(cleaned) ?? "UNKNOWN";
 }
 
-function renderCustomBarLabel(props: any) {
+function renderCustomBarLabel(props: import("recharts").LabelProps) {
   const { x, y, width, value, height } = props;
+  if (typeof x !== "number" || typeof y !== "number" || typeof width !== "number" || typeof height !== "number") return <></>;
   return (
     <text x={x + width + 6} y={y + height / 2} fill="currentColor" fontSize={11} dominantBaseline="central" textAnchor="start" style={{ fontVariantNumeric: "tabular-nums" }}>
-      {formatBytes(value, 0)}
+      {formatBytes(Number(value) || 0, 0)}
     </text>
   );
 }
@@ -115,10 +116,10 @@ export function InteractiveProxyStats({
     enabled: !data && !!activeBackendId,
   });
   
-  const proxyData = data ?? listData ?? [];
+  const proxyData = useMemo(() => data ?? listData ?? [], [data, listData]);
   const listLoading = !data && listQueryLoading && !listData;
   
-  const [selectedProxy, setSelectedProxy] = useState<string | null>(null);
+  const [proxyChoice, setSelectedProxy] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("domains");
   const [detailPageSize, setDetailPageSize] = useState<PageSize>(10);
   const [showDomainBarLabels, setShowDomainBarLabels] = useState(true);
@@ -148,22 +149,17 @@ export function InteractiveProxyStats({
       countryCode: getProxyCountryCode(proxy.chain),
       rank: index,
     }));
-  }, [proxyData]);
+  }, [proxyData, COLORS]);
 
   const totalTraffic = useMemo(() => chartData.reduce((sum, item) => sum + item.value, 0), [chartData]);
   const topProxies = useMemo(() => [...chartData].sort((a, b) => b.value - a.value).slice(0, 4), [chartData]);
   const maxTotal = useMemo(() => chartData.length ? Math.max(...chartData.map(p => p.value)) : 1, [chartData]);
 
-  useEffect(() => {
-    if (chartData.length === 0) {
-      setSelectedProxy(null);
-      return;
-    }
-    const exists = !!selectedProxy && chartData.some((item) => item.rawName === selectedProxy);
-    if (!exists) {
-      setSelectedProxy(chartData[0].rawName);
-    }
-  }, [chartData, selectedProxy]);
+
+
+  const selectedProxy = chartData.some(item => item.rawName === proxyChoice)
+    ? proxyChoice : chartData[0]?.rawName ?? null;
+  if (proxyChoice !== selectedProxy) setSelectedProxy(selectedProxy);
 
   const wsDetailEnabled = autoRefresh && !!activeBackendId && !!selectedProxy;
   const { status: wsDetailStatus } = useStatsWebSocket({

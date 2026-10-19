@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InsightThreePanelSkeleton } from "@/components/ui/insight-skeleton";
 import { api, type TimeRange } from "@/lib/api";
 import { getDevicesQueryKey } from "@/lib/stats-query-keys";
+import { keepPreviousByIdentity } from "@/lib/query-placeholder";
 import { useStableTimeRange } from "@/lib/hooks/use-stable-time-range";
 import { useTransferRate } from "@/lib/transfer-rate";
 import { cn } from "@/lib/utils";
@@ -287,6 +288,7 @@ const DevicesContent = memo(function DevicesContent({
     queryKey: getDevicesQueryKey(activeBackendId, 2000, stableTimeRange),
     queryFn: () => api.getDevices(activeBackendId, 2000, stableTimeRange),
     enabled: !!activeBackendId,
+    placeholderData: (previous, query) => keepPreviousByIdentity(previous, query, { backendId: activeBackendId ?? null }),
     refetchInterval: autoRefresh ? 5000 : false,
   });
 
@@ -348,7 +350,6 @@ export function Content({
   backendStatus,
   onNavigate,
   onTimeRangeChange,
-  isTransitioning,
 }: ContentProps) {
   const renderContent = () => {
     switch (activeTab) {

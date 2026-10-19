@@ -24,7 +24,7 @@ type RuntimeConfig = {
 
 function getRuntimeConfig(): RuntimeConfig | undefined {
   if (typeof window === "undefined") return undefined;
-  return (window as any).__RUNTIME_CONFIG__ as RuntimeConfig | undefined;
+  return (window as Window & { __RUNTIME_CONFIG__?: RuntimeConfig }).__RUNTIME_CONFIG__;
 }
 
 function normalizeApiBase(url: string): string {

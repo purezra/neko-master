@@ -47,9 +47,10 @@ export function ProxyStatsChart({ data }: ProxyStatsChartProps) {
     return chartData.reduce((sum, item) => sum + item.value, 0);
   }, [chartData]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const renderTooltip = ({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{payload?: unknown}> }) => {
     if (active && payload && payload.length) {
-      const item = payload[0].payload;
+      const item = payload[0].payload as (typeof chartData)[number] | undefined;
+      if (!item) return null;
       return (
         <div className="glass-card p-3 rounded-lg border shadow-lg">
           <p className={cn("font-medium text-sm mb-2", isWindows && "emoji-flag-font")}>{item.name}</p>
@@ -102,7 +103,7 @@ export function ProxyStatsChart({ data }: ProxyStatsChartProps) {
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={renderTooltip} />
             </PieChart>
           </ResponsiveContainer>
         </div>

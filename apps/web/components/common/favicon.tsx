@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import Image from "next/image";
 import { Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getFaviconUrl, useSettings, type FaviconProvider } from "@/lib/settings";
+import { getFaviconUrl, useSettings } from "@/lib/settings";
 
 interface FaviconProps {
   domain: string;
@@ -49,8 +50,7 @@ function cleanDomain(domain: string): string {
 }
 
 export function Favicon({ domain, size = "md", className }: FaviconProps) {
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [imageState, setImageState] = useState<{ url: string; status: "loaded" | "error" } | null>(null);
   const { settings } = useSettings();
 
   const cleanedDomain = cleanDomain(domain);
@@ -58,11 +58,8 @@ export function Favicon({ domain, size = "md", className }: FaviconProps) {
 
   const faviconUrl = getFaviconUrl(cleanedDomain, settings.faviconProvider);
 
-  // Reset error state when provider changes
-  useEffect(() => {
-    setError(false);
-    setLoading(true);
-  }, [settings.faviconProvider, domain]);
+  const error = imageState?.url === faviconUrl && imageState.status === "error";
+  const loading = imageState?.url !== faviconUrl || imageState.status !== "loaded";
 
   if (settings.faviconProvider === "off" || error || !cleanedDomain) {
     return (
@@ -95,7 +92,7 @@ export function Favicon({ domain, size = "md", className }: FaviconProps) {
           )}
         />
       )}
-      <img
+      <Image unoptimized width={48} height={48}
         key={faviconUrl} // Force re-render when URL changes
         src={faviconUrl}
         alt={cleanedDomain}
@@ -103,8 +100,8 @@ export function Favicon({ domain, size = "md", className }: FaviconProps) {
           "w-full h-full object-cover p-0.5",
           loading ? "opacity-0" : "opacity-100"
         )}
-        onError={() => setError(true)}
-        onLoad={() => setLoading(false)}
+        onError={() => setImageState({ url: faviconUrl, status: "error" })}
+        onLoad={() => setImageState({ url: faviconUrl, status: "loaded" })}
       />
     </div>
   );

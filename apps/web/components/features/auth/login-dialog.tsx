@@ -10,8 +10,6 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -60,7 +58,7 @@ export function LoginDialog({ open, onOpenChange, onLogin }: LoginDialogProps) {
         setError(t("invalidToken"));
         setIsLoading(false);
       }
-    } catch (err) {
+    } catch {
       setError(t("loginError"));
       setIsLoading(false);
     }

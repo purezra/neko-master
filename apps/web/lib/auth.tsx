@@ -8,8 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { authKeys } from "./auth-queries";
+import { useMutation } from "@tanstack/react-query";
 
 import type { AuthState } from "@neko-master/shared";
 
@@ -25,11 +24,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+async function readAuthSession(): Promise<{ state: AuthState; authenticated: boolean }> {
+  try {
+    const response = await fetch("/api/auth/state");
+    if (!response.ok) return { state: { enabled: false, hasToken: false }, authenticated: true };
+    const state: AuthState = await response.json();
+    const authenticated = !state.enabled || (await fetch("/api/backends")).ok;
+    return { state, authenticated };
+  } catch (error) {
+    console.error("Failed to check auth state:", error);
+    return { state: { enabled: false, hasToken: false }, authenticated: true };
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authState, setAuthState] = useState<AuthState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const queryClient = useQueryClient();
   // We use useLogout logic but inside provider
   const { mutate: logoutMutate } = useMutation({
     mutationFn: async () => {
@@ -41,49 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  // Check auth state from server
-  const checkAuth = useCallback(async () => {
-    try {
-      const response = await fetch("/api/auth/state");
-      
-      // If we can't reach the server, assume no auth required/error
-      // But actually if we are authorized, we should be able to reach it.
-      // Wait, /api/auth/state is public.
-      
-      if (!response.ok) {
-        setAuthState({ enabled: false, hasToken: false });
-        setIsAuthenticated(true);
-        return;
-      }
-
-      const state: AuthState = await response.json();
-      setAuthState(state);
-
-      if (!state.enabled) {
-        // Auth is not enabled, user is automatically authenticated
-        setIsAuthenticated(true);
-        return;
-      }
-
-      // Auth is enabled – check if we have a valid session by hitting a
-      // protected, lightweight endpoint.  `/api/backends` is a core endpoint
-      // that will always exist and is protected by the auth middleware.
-      const checkRes = await fetch("/api/backends");
-      if (checkRes.ok) {
-        setIsAuthenticated(true);
-      } else {
-        setIsAuthenticated(false);
-      }
-
-    } catch (error) {
-      console.error("Failed to check auth state:", error);
-      // On error, assume no auth required to prevent lockout
-      setAuthState({ enabled: false, hasToken: false });
-      setIsAuthenticated(true);
-    } finally {
-      setIsLoading(false);
-    }
+  const applySession = useCallback((session: Awaited<ReturnType<typeof readAuthSession>>) => {
+    setAuthState(session.state);
+    setIsAuthenticated(session.authenticated);
+    setIsLoading(false);
   }, []);
+  const checkAuth = useCallback(async () => {
+    applySession(await readAuthSession());
+  }, [applySession]);
 
   // Confirm login manually (used for delayed UI transitions)
   const confirmLogin = useCallback(() => {
@@ -128,8 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check auth on mount
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    let cancelled = false;
+    void readAuthSession().then(session => { if (!cancelled) applySession(session); });
+    return () => { cancelled = true; };
+  }, [applySession]);
 
   // Listen for unauthorized events from API (from custom fetch wrapper or axios)
   useEffect(() => {

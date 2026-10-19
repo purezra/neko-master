@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useMemo, useState } from "react";
 import { Globe, Link2, ArrowUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -112,7 +114,7 @@ export function DomainTopList({ data, limit = 7, onViewAll }: DomainTopListProps
                   <Globe className="w-3 h-3 text-muted-foreground" />
                 </span>
               ) : (
-                <img
+                <Image unoptimized width={48} height={48}
                   src={getFaviconForDomain(domain.domain)}
                   alt=""
                   className="w-5 h-5"

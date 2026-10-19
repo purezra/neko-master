@@ -1,6 +1,12 @@
 declare module 'react-simple-maps' {
   import * as React from 'react';
   
+  export interface MapGeography {
+    rsmKey: string;
+    properties: { name: string; ISO_A2?: string; iso_a2?: string };
+    geometry: object;
+  }
+
   interface ComposableMapProps {
     projection?: string;
     projectionConfig?: object;
@@ -21,11 +27,11 @@ declare module 'react-simple-maps' {
   
   interface GeographiesProps {
     geography: string | object;
-    children: (props: { geographies: any[] }) => React.ReactNode;
+    children: (props: { geographies: MapGeography[] }) => React.ReactNode;
   }
   
   interface GeographyProps {
-    geography: any;
+    geography: MapGeography;
     fill?: string;
     stroke?: string;
     strokeWidth?: number;
@@ -34,9 +40,9 @@ declare module 'react-simple-maps' {
       hover?: React.CSSProperties;
       pressed?: React.CSSProperties;
     };
-    onClick?: (event: any) => void;
-    onMouseEnter?: (event: any) => void;
-    onMouseLeave?: (event: any) => void;
+    onClick?: (event: React.MouseEvent<SVGPathElement>) => void;
+    onMouseEnter?: (event: React.MouseEvent<SVGPathElement>) => void;
+    onMouseLeave?: (event: React.MouseEvent<SVGPathElement>) => void;
   }
   
   export const ComposableMap: React.FC<ComposableMapProps>;

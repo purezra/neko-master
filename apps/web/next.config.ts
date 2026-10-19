@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { createRequire } from "node:module";
 import createNextIntlPlugin from "next-intl/plugin";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -96,8 +97,7 @@ let finalConfig = withNextIntl(nextConfig);
 
 if (process.env.NODE_ENV === "production") {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const withPWA = require("@ducanh2912/next-pwa");
+    const withPWA = createRequire(import.meta.url)("@ducanh2912/next-pwa");
     finalConfig = withPWA({
       dest: "public",
       register: true,

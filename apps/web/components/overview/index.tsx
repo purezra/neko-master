@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef, useTransition } from "react";
+import { useState, useEffect, useCallback, useMemo, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { TopDomainsSimple } from "./top-domains-simple";
@@ -126,19 +126,23 @@ export function OverviewTab({
   };
 
   // Traffic trend state
-  const [trendGranularity, setTrendGranularity] = useState<TrendGranularity>("minute");
-  const [trendTimeRange, setTrendTimeRange] = useState<TrendTimeRange>("24h");
-  const [forceMinuteGranularity, setForceMinuteGranularity] = useState(false);
+  const [trendChoice, setTrendTimeRange] = useState<TrendTimeRange>("24h");
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, [autoRefresh]);
   const [, startTransition] = useTransition();
 
   const parsedRange = useMemo(() => {
-    const end = parseIsoDate(timeRange.end) ?? new Date();
+    const end = parseIsoDate(timeRange.end) ?? new Date(now);
     const start = parseIsoDate(timeRange.start) ?? new Date(end.getTime() - ONE_DAY_MS);
     if (start > end) {
       return { start: end, end };
     }
     return { start, end };
-  }, [timeRange.end, timeRange.start]);
+  }, [timeRange.end, timeRange.start, now]);
 
   const globalDurationMs = useMemo(
     () => Math.max(60 * 1000, parsedRange.end.getTime() - parsedRange.start.getTime()),
@@ -146,8 +150,8 @@ export function OverviewTab({
   );
 
   const isLatestWindow = useMemo(
-    () => parsedRange.end.getTime() >= Date.now() - REALTIME_END_TOLERANCE_MS,
-    [parsedRange.end],
+    () => parsedRange.end.getTime() >= now - REALTIME_END_TOLERANCE_MS,
+    [parsedRange.end, now],
   );
 
   const canUseTrendSelector = useMemo(
@@ -164,12 +168,11 @@ export function OverviewTab({
     [canUseTrendSelector, globalDurationMs, timePreset],
   );
 
-  useEffect(() => {
-    if (!canUseTrendSelector) return;
-    if (trendTimeOptions.includes(trendTimeRange)) return;
-    const fallback = trendTimeOptions[trendTimeOptions.length - 1] ?? "30m";
-    setTrendTimeRange(fallback);
-  }, [canUseTrendSelector, trendTimeOptions, trendTimeRange]);
+  const trendTimeRange = canUseTrendSelector && !trendTimeOptions.includes(trendChoice)
+    ? trendTimeOptions[trendTimeOptions.length - 1] ?? "30m" : trendChoice;
+  const fallbackKey = JSON.stringify([activeBackendId, timeRange.start, timeRange.end, trendTimeRange]);
+  const [sparseFallbackKey, setSparseFallbackKey] = useState<string | null>(null);
+  const forceMinuteGranularity = sparseFallbackKey === fallbackKey;
 
   const trendQuery = useMemo(() => {
     const queryEnd = parsedRange.end;
@@ -200,9 +203,9 @@ export function OverviewTab({
     }
 
     const bucketMinutes = granularity === "day" ? 24 * 60 : getMinuteBucket(durationMs);
-    const tzOffsetMinutes = granularity === "day" ? -new Date().getTimezoneOffset() : undefined;
+    const tzOffsetMinutes = granularity === "day" ? -queryStart.getTimezoneOffset() : undefined;
     const minutes = Math.max(1, Math.ceil(durationMs / 60000));
-    const realtime = queryEnd.getTime() >= Date.now() - REALTIME_END_TOLERANCE_MS;
+    const realtime = isLatestWindow;
 
     return {
       start: queryStart.toISOString(),
@@ -214,7 +217,7 @@ export function OverviewTab({
       granularity,
       realtime,
     };
-  }, [parsedRange.end, parsedRange.start, canUseTrendSelector, trendTimeRange, forceMinuteGranularity]);
+  }, [parsedRange.end, parsedRange.start, canUseTrendSelector, trendTimeRange, forceMinuteGranularity, isLatestWindow]);
 
 
   const wsTrendEnabled = autoRefresh && !!activeBackendId && canUseTrendSelector && trendQuery.realtime;
@@ -246,7 +249,7 @@ export function OverviewTab({
   const wsTrendConnected = wsTrendStatus === "connected";
 
   // Use the new hook for data fetching
-  const { data: trendData, isLoading: trendLoading, isFetching: trendFetching } = useTrafficTrend({
+  const { data: trendData, isLoading: trendLoading, isFetching: trendFetching, isPlaceholderData: trendPlaceholder } = useTrafficTrend({
     activeBackendId,
     minutes: trendQuery.minutes,
     bucketMinutes: trendQuery.bucketMinutes,
@@ -256,44 +259,19 @@ export function OverviewTab({
     refetchInterval: wsTrendEnabled && wsTrendConnected ? 90000 : false,
   });
 
-  // Sync trend granularity state
-  useEffect(() => {
-    setTrendGranularity(trendQuery.granularity);
-  }, [trendQuery.granularity]);
-
-  // Sparse data detection logic
-  useEffect(() => {
-    if (!trendData || trendLoading) return;
-    
-    // Only check if we are in "day" granularity and not already forced
-    if (trendQuery.granularity === "day" && !forceMinuteGranularity && trendData.length > 0) {
-      const spanMs = getTrendDataSpanMs(trendData);
-      const shouldFallbackToMinute = trendData.length <= 2 && spanMs <= ONE_DAY_MS;
-      
-      if (shouldFallbackToMinute) {
-        setForceMinuteGranularity(true);
-      }
-    } else if (trendQuery.granularity === "minute" && forceMinuteGranularity) {
-      // Reset force if we moved naturally to minute or conditions changed? 
-      // For now, reset if the natural granularity becomes minute
-      const durationMs = Math.max(60 * 1000, new Date(trendQuery.end).getTime() - new Date(trendQuery.start).getTime());
-       if (durationMs <= ONE_DAY_MS) {
-           setForceMinuteGranularity(false);
-       }
-    }
-  }, [trendData, trendQuery.granularity, trendLoading, forceMinuteGranularity, trendQuery.start, trendQuery.end]);
-  
-  // Reset force state when backend or time range changes drastically
-  useEffect(() => {
-     setForceMinuteGranularity(false);
-  }, [activeBackendId, timeRange, trendTimeRange]);
+  // Only choose the sparse-data fallback from this range's completed daily result.
+  if (!trendLoading && !trendPlaceholder && trendQuery.granularity === "day" &&
+      trendData && trendData.length > 0 && trendData.length <= 2 && getTrendDataSpanMs(trendData) <= ONE_DAY_MS &&
+      !forceMinuteGranularity) {
+    setSparseFallbackKey(fallbackKey);
+  }
 
   // Handle time range change with transition
   const handleTimeRangeChange = (range: TrendTimeRange) => {
     if (range === trendTimeRange) return;
     startTransition(() => {
       setTrendTimeRange(range);
-      setForceMinuteGranularity(false); 
+      setSparseFallbackKey(null);
     });
   };
 
@@ -302,7 +280,7 @@ export function OverviewTab({
       {/* Traffic Trend Chart - Full width */}
       <TrafficTrendChart 
         data={trendData || []}
-        granularity={trendGranularity}
+        granularity={trendQuery.granularity}
         bucketMinutes={trendQuery.bucketMinutes}
         rangeEnd={trendQuery.end}
         timeRange={canUseTrendSelector ? trendTimeRange : undefined}

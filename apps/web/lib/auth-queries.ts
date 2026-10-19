@@ -1,14 +1,13 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
 import type { AuthState } from "@neko-master/shared";
 
 // API functions
 async function fetchAuthState(): Promise<AuthState> {
   const response = await fetch("/api/auth/state");
   if (!response.ok) {
-    throw new Error("Failed to fetch auth state");
+    throw Object.assign(new Error("Failed to fetch auth state"), { status: response.status });
   }
   return response.json();
 }
@@ -42,7 +41,8 @@ export function useAuthState() {
     // If error occurs, we need to know about it
     retry: (failureCount, error) => {
       // Don't retry on 401/403
-      if ((error as any)?.status === 401 || (error as any)?.message?.includes('401')) return false;
+      const status = "status" in error ? error.status : undefined;
+      if (status === 401 || status === 403 || error.message.includes("401")) return false;
       return failureCount < 3;
     },
     // Refetch on window focus to keep auth state in sync

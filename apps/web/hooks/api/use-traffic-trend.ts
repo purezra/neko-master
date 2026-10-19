@@ -1,4 +1,4 @@
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, keepPreviousData, type UseQueryOptions } from "@tanstack/react-query";
 import { api, type TimeRange } from "@/lib/api";
 import { getTrafficTrendQueryKey } from "@/lib/stats-query-keys";
 
@@ -11,7 +11,7 @@ interface UseTrafficTrendOptions {
   tzOffsetMinutes?: number;
   range?: TimeRange;
   enabled?: boolean;
-  refetchInterval?: number | false | ((query: any) => number | false);
+  refetchInterval?: UseQueryOptions<Awaited<ReturnType<typeof api.getTrafficTrendAggregated>>>["refetchInterval"];
 }
 
 const TREND_CACHE_TTL_MS = QUERY_CONFIG.STALE_TIME.DETAIL;

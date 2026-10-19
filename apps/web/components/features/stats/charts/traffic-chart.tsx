@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { useTranslations, useLocale } from "next-intl";
+import { useLocale } from "next-intl";
 import type { HourlyStats } from "@neko-master/shared";
 import { formatBytes } from "@/lib/utils";
 import { useThemePalette } from "@/lib/hooks/use-theme-palette";
@@ -20,7 +20,6 @@ interface TrafficChartProps {
 }
 
 export function TrafficChart({ data }: TrafficChartProps) {
-  const t = useTranslations("chart");
   const locale = useLocale();
 
   const chartData = useMemo(() => {
