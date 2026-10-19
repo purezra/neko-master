@@ -135,7 +135,7 @@ function normalizeWsUrl(rawUrl: string, runtime?: RuntimeConfig): string {
   return trimmed;
 }
 
-function getWsUrlCandidates(): string[] {
+export function getWsUrlCandidates(): string[] {
   const runtime = getRuntimeConfig();
   const wsPort = runtime?.WS_PORT || process.env.NEXT_PUBLIC_WS_PORT || '3002';
 
@@ -160,7 +160,7 @@ function getWsUrlCandidates(): string[] {
 
   if (typeof window !== 'undefined') {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const hostForPort = runtime?.WS_HOST || window.location.hostname;
+    const hostForPort = runtime?.WS_HOST || process.env.NEXT_PUBLIC_WS_HOST || window.location.hostname;
     const directUrl = `${wsProtocol}://${hostForPort}:${wsPort}`;
     const hostForPath = runtime?.WS_HOST || window.location.host;
     const pathUrl = `${wsProtocol}://${hostForPath}/_cm_ws`;
@@ -416,6 +416,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
         }
 
         // Auto reconnect with exponential backoff.
+        wsUrlIndexRef.current = 0;
         const delay = Math.min(3000 * Math.pow(2, reconnectAttemptsRef.current), maxReconnectDelayMs);
         reconnectAttemptsRef.current++;
         console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
@@ -427,13 +428,13 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
       ws.onerror = (error) => {
         // Only log error if we've exhausted all candidate URLs or if the connection was already established
         if (opened || wsUrlIndexRef.current >= wsUrls.length - 1) {
-          console.error('[WebSocket] Connection error. URL:', wsUrl);
+          console.warn('[WebSocket] Connection unavailable; using HTTP fallback. URL:', wsUrl);
         }
         setStatus('error');
         onErrorRef.current?.(error);
       };
     } catch (err) {
-      console.error('[WebSocket] Failed to create connection:', err);
+      console.warn('[WebSocket] Could not create connection; using HTTP fallback:', err);
       setStatus('error');
     }
   }, []);

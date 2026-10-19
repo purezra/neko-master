@@ -297,6 +297,13 @@
     "chainFlowRetry": "Retry",
     "showAll": "Panorama",
     "activePolicy": "All Policies",
+    "policyGroups": "Select groups",
+    "policyGroupsSelected": "Groups · {count}",
+    "policyGroupsHint": "Select one or more policy groups. Clear the selection to show all.",
+    "resetPolicyGroups": "Show all groups",
+    "searchPolicyGroups": "Search policy groups...",
+    "noMatchingPolicyGroups": "No matching policy groups",
+    "noPolicyGroupChains": "No chains for the selected groups in the current display mode",
     "noTrafficRecord": "No traffic record",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen"

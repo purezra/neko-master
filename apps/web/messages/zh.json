@@ -297,6 +297,13 @@
     "chainFlowRetry": "重试",
     "showAll": "全景展示",
     "activePolicy": "全部策略",
+    "policyGroups": "选择策略组",
+    "policyGroupsSelected": "策略组 · {count}",
+    "policyGroupsHint": "可选择一个或多个策略组，清空选择恢复全部。",
+    "resetPolicyGroups": "恢复全部",
+    "searchPolicyGroups": "搜索策略组...",
+    "noMatchingPolicyGroups": "没有匹配的策略组",
+    "noPolicyGroupChains": "当前显示模式下暂无所选策略组的链路",
     "noTrafficRecord": "暂无流量记录",
     "fullscreen": "全屏",
     "exitFullscreen": "退出全屏"

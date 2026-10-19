@@ -20,6 +20,18 @@ const API_DESTINATION = apiUrl.endsWith('/api')
   ? `${apiUrl}/:path*` 
   : `${apiUrl}/api/:path*`;
 
+// A local frontend can proxy HTTP to a remote collector. Its WebSocket must
+// use that host too, rather than silently trying the developer's own machine.
+let devWsHost = "";
+if (process.env.NODE_ENV === "development" && process.env.API_URL) {
+  try {
+    const hostname = new URL(apiUrl).hostname;
+    if (!["localhost", "127.0.0.1", "[::1]"].includes(hostname)) devWsHost = hostname;
+  } catch {
+    // Relative API paths continue to use the browser's host.
+  }
+}
+
 // Base Next.js config
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -39,6 +51,7 @@ const nextConfig: NextConfig = {
     // At runtime (e.g. Docker), use WS_EXTERNAL_PORT env var instead — it is written
     // into runtime-config.js by docker-start.sh and read via window.__RUNTIME_CONFIG__.
     NEXT_PUBLIC_WS_PORT: process.env.NEXT_PUBLIC_WS_PORT || "3002",
+    NEXT_PUBLIC_WS_HOST: process.env.NEXT_PUBLIC_WS_HOST || devWsHost,
   },
   // Turbopack configuration (formerly experimental.turbopack)
   turbopack: {

@@ -106,8 +106,8 @@ export function useDashboard(): UseDashboardReturn {
 
   // UI State
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [timeRange, setTimeRange] = useState<TimeRange>(getPresetTimeRange("24h"));
-  const [timePreset, setTimePreset] = useState<TimePreset>("24h");
+  const [timeRange, setTimeRange] = useState<TimeRange>(() => getPresetTimeRange("today"));
+  const [timePreset, setTimePreset] = useState<TimePreset>("today");
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [autoRefreshTick, setAutoRefreshTick] = useState(0);

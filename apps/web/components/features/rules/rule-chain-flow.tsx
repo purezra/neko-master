@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn, formatBytes, formatNumber } from "@/lib/utils";
 import { useThemePalette } from "@/lib/hooks/use-theme-palette";
 import { api, type TimeRange } from "@/lib/api";
@@ -41,6 +42,8 @@ import { useTranslations } from "next-intl";
 import type { StatsSummary } from "@neko-master/shared";
 import { useGatewayProviders, useGatewayProxies } from "@/hooks/api/use-gateway";
 import { useGatewayRules } from "@/hooks/api/use-rules";
+import { filterChainFlowByGroups, orderPolicyGroups } from "@/lib/chain-flow-filter";
+import { PolicyGroupFilter } from "./policy-group-filter";
 
 // ---------- Types ----------
 
@@ -932,12 +935,20 @@ function RuleChainFlowContent({
   const [retryNonce, setRetryNonce] = useState(0);
   const [showAll, setShowAll] = useState(false);
   const [activePolicyOnly, setActivePolicyOnly] = useState(false);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const prevRuleRef = useRef(selectedRule);
   const hasLoadedRef = useRef(false);
   const requestIdRef = useRef(0);
   const prevBackendRef = useRef<number | undefined>(undefined);
   const flowContainerRef = useRef<HTMLDivElement | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const [fallbackFullscreen, setFallbackFullscreen] = useState(false);
+  const isFullscreen = nativeFullscreen || fallbackFullscreen;
+  const [fullscreenContainer, setFullscreenContainer] = useState<HTMLElement | null>(null);
+  const bindFlowContainer = useCallback((element: HTMLDivElement | null) => {
+    flowContainerRef.current = element;
+    setFullscreenContainer(element);
+  }, []);
   // Throttle data commits to avoid flooding ReactFlow with updates every ~1s.
   // The first commit is immediate (initial load), subsequent ones are spaced ≥5s apart.
   const COMMIT_THROTTLE_MS = 5000;
@@ -1010,6 +1021,10 @@ function RuleChainFlowContent({
   const useHttpFallback = !wsEnabled || wsStatus !== "connected";
 
   const toggleFullscreen = useCallback(async () => {
+    if (fallbackFullscreen) {
+      setFallbackFullscreen(false);
+      return;
+    }
     if (typeof document === "undefined") return;
     const target = flowContainerRef.current;
     if (!target) return;
@@ -1038,11 +1053,14 @@ function RuleChainFlowContent({
         await element.requestFullscreen();
       } else if (element.webkitRequestFullscreen) {
         await element.webkitRequestFullscreen();
+      } else {
+        setFallbackFullscreen(true);
       }
     } catch (err) {
-      console.error("Failed to toggle fullscreen:", err);
+      console.warn("Native fullscreen unavailable; opening expanded view:", err);
+      setFallbackFullscreen(true);
     }
-  }, []);
+  }, [fallbackFullscreen]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -1051,7 +1069,7 @@ function RuleChainFlowContent({
       const doc = document as Document & { webkitFullscreenElement?: Element | null };
       const fullscreenElement =
         doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
-      setIsFullscreen(fullscreenElement === flowContainerRef.current);
+      setNativeFullscreen(!!fullscreenElement && fullscreenElement === flowContainerRef.current);
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -1237,6 +1255,9 @@ function RuleChainFlowContent({
       }
     } else if (selectedRule && activeChains.has(selectedRule)) {
       chainsToInject.add(selectedRule);
+    }
+    for (const group of selectedGroups) {
+      if (activeChains.has(group)) chainsToInject.add(group);
     }
 
     for (const ruleName of chainsToInject) {
@@ -1446,17 +1467,35 @@ function RuleChainFlowContent({
       rulePaths: newRulePaths,
       maxLayer,
     };
-  }, [data, activePolicyOnly, activeChainInfo, selectedRule, visibleRuleNames]);
+  }, [data, activePolicyOnly, activeChainInfo, selectedRule, visibleRuleNames, selectedGroups]);
 
-  const renderData = filteredData;
+  const policyGroups = useMemo(() => {
+    const names = new Set<string>();
+    for (const name of gatewayProxies?.proxies.GLOBAL?.all ?? []) {
+      if (gatewayProxies?.proxies[name]?.all) names.add(name);
+    }
+    for (const node of [...(data?.nodes ?? []), ...(filteredData?.nodes ?? [])]) {
+      // The collector labels top-level policy groups as "rule" nodes.
+      if (node.nodeType !== "proxy") names.add(node.name);
+    }
+    for (const name of selectedGroups) names.add(name);
+    return orderPolicyGroups([...names], gatewayProxies?.proxies.GLOBAL?.all);
+  }, [data, filteredData, selectedGroups, gatewayProxies]);
+
+  const renderData = useMemo(() => filteredData
+    ? filterChainFlowByGroups(filteredData, selectedGroups)
+    : null, [filteredData, selectedGroups]);
+  // A group selection focuses all matching chains, regardless of the rule row
+  // that was previously selected in the table.
+  const focusedRule = selectedGroups.length > 0 || showAll ? null : selectedRule;
 
   // Container height: compact for focused mode, taller for show-all
   const containerHeight = useMemo(() => {
     if (!renderData || renderData.nodes.length === 0) return 280;
 
-    if (!showAll && selectedRule && renderData.rulePaths[selectedRule]) {
+    if (focusedRule && renderData.rulePaths[focusedRule]) {
       // Focused mode: just enough for the active chain
-      const activeNodes = renderData.rulePaths[selectedRule].nodeIndices;
+      const activeNodes = renderData.rulePaths[focusedRule].nodeIndices;
       const layerCounts = new Map<number, number>();
       for (const idx of activeNodes) {
         const layer = renderData.nodes[idx].layer;
@@ -1474,7 +1513,7 @@ function RuleChainFlowContent({
     });
     const maxNodesInLayer = Math.max(...layerCounts.values());
     return Math.min(600, Math.max(300, maxNodesInLayer * 90 + 60));
-  }, [renderData, showAll, selectedRule]);
+  }, [renderData, focusedRule]);
 
   if (loading) {
     return (
@@ -1512,53 +1551,18 @@ function RuleChainFlowContent({
     );
   }
 
-  if (!renderData || renderData.nodes.length <= 1) {
+  if (!renderData || (renderData.nodes.length <= 1 && selectedGroups.length === 0)) {
     return null;
   }
 
-  return (
-      <Card className="mb-4 overflow-hidden">
-      <CardHeader className="pb-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2 min-w-0">
-            <Workflow className="h-4 w-4 text-primary shrink-0" />
-            <span className="leading-tight">{t("chainFlow")}</span>
-          </CardTitle>
-          <div className="flex w-full sm:w-auto items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "h-7 px-3 text-xs gap-1.5 rounded-full transition-colors",
-                activePolicyOnly
-                  ? "border-emerald-500 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:border-emerald-500/50"
-                  : "hover:border-emerald-300 hover:text-emerald-600",
-              )}
-              onClick={() => setActivePolicyOnly(!activePolicyOnly)}>
-              <Activity className={cn("h-3.5 w-3.5", activePolicyOnly && "text-emerald-500")} />
-              {t("activePolicy")}
-            </Button>
-            <Button
-              variant={showAll ? "default" : "outline"}
-              size="sm"
-              className={cn(
-                "h-7 px-3 text-xs gap-1.5 rounded-full",
-                showAll && "bg-primary/90 hover:bg-primary",
-              )}
-              onClick={() => setShowAll(!showAll)}>
-              <Eye className="h-3.5 w-3.5" />
-              {t("showAll")}
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
+  const flowPanel = (
         <div
-          ref={flowContainerRef}
-          style={{ height: isFullscreen ? "100vh" : containerHeight }}
+          ref={bindFlowContainer}
+          style={{ height: isFullscreen ? "100dvh" : containerHeight }}
           className={cn("relative w-full", isFullscreen && "bg-background")}>
           {isFullscreen && (
-            <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+            <div className="absolute top-3 right-3 left-3 z-20 flex flex-wrap justify-end items-center gap-2">
+              <PolicyGroupFilter groups={policyGroups} selectedGroups={selectedGroups} onChange={setSelectedGroups} portalContainer={fullscreenContainer} />
               <Button
                 variant="outline"
                 size="sm"
@@ -1587,16 +1591,73 @@ function RuleChainFlowContent({
               </Button>
             </div>
           )}
-          <ReactFlowProvider>
+          {renderData.nodes.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+              <span>{t("noPolicyGroupChains")}</span>
+              <Button variant="outline" size="sm" onClick={() => setSelectedGroups([])}>{t("resetPolicyGroups")}</Button>
+            </div>
+          ) : <ReactFlowProvider>
             <MemoizedFlowRenderer
               data={renderData}
-              selectedRule={showAll ? null : selectedRule}
+              selectedRule={focusedRule}
               showAll={showAll}
               isFullscreen={isFullscreen}
               onToggleFullscreen={toggleFullscreen}
             />
-          </ReactFlowProvider>
+          </ReactFlowProvider>}
         </div>
+  );
+
+  return (
+      <Card className="mb-4 overflow-hidden">
+      <CardHeader className="pb-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2 min-w-0">
+            <Workflow className="h-4 w-4 text-primary shrink-0" />
+            <span className="leading-tight">{t("chainFlow")}</span>
+          </CardTitle>
+          <div className="flex w-full sm:w-auto flex-wrap items-center justify-end gap-2">
+            <PolicyGroupFilter groups={policyGroups} selectedGroups={selectedGroups} onChange={setSelectedGroups} />
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "h-7 px-3 text-xs gap-1.5 rounded-full transition-colors",
+                activePolicyOnly
+                  ? "border-emerald-500 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:border-emerald-500/50"
+                  : "hover:border-emerald-300 hover:text-emerald-600",
+              )}
+              onClick={() => setActivePolicyOnly(!activePolicyOnly)}>
+              <Activity className={cn("h-3.5 w-3.5", activePolicyOnly && "text-emerald-500")} />
+              {t("activePolicy")}
+            </Button>
+            <Button
+              variant={showAll ? "default" : "outline"}
+              size="sm"
+              className={cn(
+                "h-7 px-3 text-xs gap-1.5 rounded-full",
+                showAll && "bg-primary/90 hover:bg-primary",
+              )}
+              onClick={() => setShowAll(!showAll)}>
+              <Eye className="h-3.5 w-3.5" />
+              {t("showAll")}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {fallbackFullscreen ? (
+          <Dialog open={fallbackFullscreen} onOpenChange={setFallbackFullscreen}>
+            <DialogContent
+              showCloseButton={false}
+              aria-describedby={undefined}
+              className="!inset-0 !top-0 !left-0 !h-dvh !w-screen !max-w-none !translate-x-0 !translate-y-0 gap-0 rounded-none border-0 p-0"
+              onOpenAutoFocus={event => event.preventDefault()}>
+              <DialogTitle className="sr-only">{t("chainFlow")}</DialogTitle>
+              {flowPanel}
+            </DialogContent>
+          </Dialog>
+        ) : flowPanel}
       </CardContent>
     </Card>
   );

@@ -126,7 +126,7 @@ export function OverviewTab({
   };
 
   // Traffic trend state
-  const [trendChoice, setTrendTimeRange] = useState<TrendTimeRange>("24h");
+  const [trendChoice, setTrendTimeRange] = useState<TrendTimeRange>("today");
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!autoRefresh) return;
