@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { api, type TimeRange } from "@/lib/api";
 import { useStableTimeRange } from "@/lib/hooks/use-stable-time-range";
 import {
@@ -12,8 +13,9 @@ import {
   getProxiesQueryKey,
   getRulesQueryKey,
   getSummaryQueryKey,
+  getDeviceTrafficDetailsQueryKey,
 } from "@/lib/stats-query-keys";
-import type { StatsSummary } from "@neko-master/shared";
+import type { StatsSummary, DeviceTrafficDetail } from "@neko-master/shared";
 import type {
   ExportDatasetId,
   ExportSourceData,
@@ -23,7 +25,7 @@ export interface UseExportSourcesParams {
   backendId?: number;
   timeRange?: TimeRange;
   topN: number;
-  enabled: Record<ExportDatasetId, boolean>;
+  enabled: Partial<Record<ExportDatasetId, boolean>>;
 }
 
 export interface UseExportSourcesResult {
@@ -41,8 +43,25 @@ export function useExportSources({
   topN,
   enabled,
 }: UseExportSourcesParams): UseExportSourcesResult {
+  const t = useTranslations("export");
   const stableRange = useStableTimeRange(timeRange);
   const hasBackend = !!backendId && !!stableRange;
+
+  const deviceDetailsQuery = useQuery({
+    queryKey: getDeviceTrafficDetailsQueryKey(backendId, stableRange),
+    queryFn: async () => {
+      const rows: DeviceTrafficDetail[] = [];
+      for (let offset = 0; offset < 100_000; offset += 1000) {
+        const page = await api.getDeviceTrafficDetails(backendId!, stableRange!, offset);
+        rows.push(...page.rows);
+        if (!page.hasMore) return rows;
+      }
+      throw new Error(t("detailLimit"));
+    },
+    enabled: hasBackend && !!enabled.deviceDetails,
+    staleTime: 60_000,
+    retry: false,
+  });
 
   const summaryQuery = useQuery({
     queryKey: getSummaryQueryKey(backendId, stableRange),
@@ -118,6 +137,7 @@ export function useExportSources({
       devices: devicesQuery.data ?? [],
       domains: domainsQuery.data?.data ?? [],
       ips: ipsQuery.data?.data ?? [],
+      deviceDetails: deviceDetailsQuery.data ?? [],
     }),
     [
       summaryQuery.data,
@@ -127,6 +147,7 @@ export function useExportSources({
       devicesQuery.data,
       domainsQuery.data,
       ipsQuery.data,
+      deviceDetailsQuery.data,
     ],
   );
 
@@ -138,6 +159,7 @@ export function useExportSources({
     devices: devicesQuery,
     domains: domainsQuery,
     ips: ipsQuery,
+    deviceDetails: deviceDetailsQuery,
   };
   const queries = (Object.keys(queryByDataset) as ExportDatasetId[])
     .filter((id) => enabled[id] && hasBackend)

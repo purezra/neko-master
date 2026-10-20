@@ -59,6 +59,7 @@ const ALL_DATASETS: Record<ExportDatasetId, true> = {
   countries: true,
   proxies: true,
   devices: true,
+  deviceDetails: true,
 };
 
 const ALL_DATASETS_SELECTED: Record<ExportDatasetId, boolean> = { ...ALL_DATASETS };
@@ -71,6 +72,7 @@ const DATASET_ICONS: Record<ExportDatasetId, typeof FileText> = {
   countries: FileText,
   proxies: FileText,
   devices: FileText,
+  deviceDetails: FileText,
 };
 
 const FORMAT_OPTIONS: Array<{
@@ -343,6 +345,7 @@ export function ExportContent({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {selected.deviceDetails && <p className="text-xs leading-relaxed text-muted-foreground">{t("deviceDetailsHint")}</p>}
             <div className="grid gap-2 sm:grid-cols-2">
               {EXPORT_DATASET_IDS.map((id) => {
                 const checked = selected[id];
@@ -474,6 +477,7 @@ export function ExportContent({
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="min-w-0 flex-1 space-y-2">
                   <p className="break-words">{t("loadError")}</p>
+                  <p className="break-words">{error}</p>
                   <Button
                     size="sm"
                     variant="outline"

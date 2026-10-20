@@ -5,8 +5,12 @@ export function getDeviceDomainComparisonQueryKey(backendId: number, sourceIP: s
   return ["stats", "device-domain-comparison", { backendId, sourceIP, current, baseline, ...options }] as const;
 }
 
-export function getEntityDailyTrendQueryKey(backendId: number, dimension: TrafficEntityDimension, value: string, range: TimeRange) {
-  return ["stats", "entity-daily-trend", { backendId, dimension, value, start: range.start, end: range.end }] as const;
+export function getEntityDailyTrendQueryKey(backendId: number, dimension: TrafficEntityDimension, value: string, range: TimeRange, includeDevices = false) {
+  return ["stats", "entity-daily-trend", { backendId, dimension, value, start: range.start, end: range.end, includeDevices }] as const;
+}
+
+export function getDeviceTrafficDetailsQueryKey(backendId?: number, range?: TimeRange) {
+  return ["stats", "device-traffic-details", { backendId: backendId ?? null, ...range }] as const;
 }
 
 export function getDeviceProfilesQueryKey(backendId?: number) {

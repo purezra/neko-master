@@ -27,7 +27,7 @@ export function buildExportCsv(
       [
         `${locale.startsWith("zh") ? "网关" : "Backend"}: ${meta.backendName}`,
         `${locale.startsWith("zh") ? "时间范围" : "Range"}: ${formatExportRange(meta)}`,
-        `Top ${meta.topN}`,
+        `Top ${meta.topN}${datasets.some(dataset => dataset.id === "deviceDetails") ? locale.startsWith("zh") ? "（设备明细全量）" : " (all device details)" : ""}`,
         `${locale.startsWith("zh") ? "导出时间" : "Exported"}: ${formatExportTimestamp(meta.exportedAt)}`,
       ].join(" | "),
     ),

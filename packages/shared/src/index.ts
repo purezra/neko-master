@@ -385,10 +385,36 @@ export interface DailyTrafficTotals {
   upload: number;
   download: number;
 }
+export interface DeviceDailyTrafficTotals extends DailyTrafficTotals {
+  /** null represents devices outside the top ten; empty string is unknown. */
+  sourceIP: string | null;
+}
+export interface DeviceTrafficDetail {
+  sourceIP: string;
+  displayName?: string;
+  groupName?: string;
+  domain: string;
+  ip: string;
+  rule: string;
+  chain: string;
+  totalUpload: number;
+  totalDownload: number;
+  totalConnections: number;
+  lastSeen: string;
+}
+export interface DeviceTrafficDetailPage {
+  rows: DeviceTrafficDetail[];
+  hasMore: boolean;
+}
 export interface EntityDailyTrend {
   dimension: TrafficEntityDimension;
   value: string;
   start: string;
   end: string;
   points: Array<{ start: string; end: string; upload: number; download: number }>;
+  devices?: Array<{
+    sourceIP: string | null;
+    displayName?: string;
+    points: EntityDailyTrend['points'];
+  }>;
 }

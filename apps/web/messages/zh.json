@@ -631,15 +631,21 @@
           "label": "Top 代理",
           "description": "各代理节点的下载、上传与连接数"
         },
+        "deviceDetails": {
+          "label": "设备访问明细",
+          "description": "按设备导出全部域名、目标 IP、统计规则、策略组、代理链及流量，不受 Top 数量限制"
+        },
         "devices": {
           "label": "设备使用统计",
           "description": "局域网内各设备的流量使用情况"
         }
       }
     },
+    "deviceDetailsHint": "设备明细按设备、域名、目标 IP、统计规则和代理链分别汇总，包含无域名的 IP 访问。多跳连接的统计规则是顶层策略组，旧数据未保存原始命中规则。仅导出保留期内已落盘数据，最多 100,000 行；超限请缩短时间范围。",
+    "detailLimit": "设备明细超过 100,000 行，请缩短导出时间范围。",
     "topN": {
       "label": "Top 数量",
-      "hint": "每个数据项最多导出前 {count} 条记录"
+      "hint": "汇总榜单最多导出前 {count} 条，设备访问明细导出全部记录"
     },
     "format": {
       "title": "导出格式",
@@ -751,8 +757,19 @@
     "retry": "重试",
     "error": "流量趋势加载失败，请重试或缩短查询时间（2～366 天）",
     "upload": "上传",
-    "chartLabel": "每日流量折线图，共 {count} 个点",
-    "period": "时段"
+    "chartLabel": "每日流量趋势图，共 {count} 个点",
+    "period": "时段",
+    "curveStyle": "曲线样式",
+    "linear": "折线",
+    "smooth": "平滑",
+    "seriesMode": "显示方式",
+    "byDevice": "分设备",
+    "otherDevices": "其他设备",
+    "unknownDevice": "未知设备",
+    "legend": "设备图例",
+    "device": "设备",
+    "deviceHint": "按时段总流量展示前 10 台设备，其余合并为其他设备；无来源 IP 的记录计入未知设备。",
+    "countryDeviceHint": "国家分设备曲线通过当前 IP 地理缓存匹配，可能与已保存的国家总量不同。"
   },
   "deviceComparison": {
     "new": "新增",

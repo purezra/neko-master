@@ -58,6 +58,52 @@ describe('entity daily traffic trends', () => {
     expect(body.points[1]).toMatchObject({ upload: 0, download: 0 });
   });
 
+  it('splits devices, zero-fills gaps and preserves totals when grouping overflow and unknown devices', async () => {
+    const other = createTestBackend(db, 'other devices');
+    const updates = Array.from({ length: 12 }, (_, i) => ({ ...base, sourceIP: `192.168.1.${i + 1}`, upload: i + 1, timestampMs: start }));
+    db.batchUpdateTrafficStats(backendId, [...updates,
+      { ...base, sourceIP: '', upload: 50, timestampMs: start + day },
+      { ...base, sourceIP: 'outside', upload: 9999, timestampMs: start + 7 * day },
+    ]);
+    db.batchUpdateTrafficStats(other, [{ ...base, upload: 9999, timestampMs: start }]);
+    db.repos.device.saveProfile(backendId, { sourceIP: '192.168.1.12', displayName: 'Laptop', groupName: '' });
+    const body = (await app.inject(`${url('domain', base.domain)}&includeDevices=true`)).json();
+    expect(body.devices).toHaveLength(11);
+    expect(body.devices.find((d: { sourceIP: string }) => d.sourceIP === '192.168.1.12').displayName).toBe('Laptop');
+    expect(body.devices.some((d: { sourceIP: string }) => d.sourceIP === '')).toBe(true);
+    expect(body.devices.some((d: { sourceIP: string | null }) => d.sourceIP === null)).toBe(true);
+    for (let bucket = 0; bucket < 7; bucket++) {
+      for (const metric of ['upload', 'download']) {
+        expect(body.devices.reduce((sum: number, d: { points: Record<string, number>[] }) => sum + d.points[bucket][metric], 0)).toBe(body.points[bucket][metric]);
+      }
+    }
+    expect((await app.inject(url('domain', base.domain))).json()).not.toHaveProperty('devices');
+  });
+
+  it('matches proxy devices literally and derives country devices from IP geolocation', async () => {
+    db.batchUpdateTrafficStats(backendId, [{ ...base, timestampMs: start },
+      { ...base, ip: '203.0.113.2', chains: ['Node_X', 'Group'], upload: 999, timestampMs: start }]);
+    db.saveIPGeolocation(base.ip, { country: 'SG', country_name: 'Singapore', city: '', asn: '', as_name: '', as_domain: '', continent: 'Asia', continent_name: 'Asia' });
+    const proxy = (await app.inject(`${url('proxy', 'Node_%')}&includeDevices=true`)).json();
+    expect(proxy.devices[0].points[0]).toMatchObject({ upload: 10, download: 30 });
+    const country = (await app.inject(`${url('country', 'SG')}&includeDevices=true`)).json();
+    expect(country.devices).toHaveLength(1);
+    expect(country.devices[0].points[0]).toMatchObject({ upload: 10, download: 30 });
+  });
+
+  it('routes device series through ClickHouse and obeys strict fallback', async () => {
+    const reader = (app.statsService as any).clickHouseReader;
+    vi.spyOn(reader, 'shouldUse').mockReturnValue(true);
+    vi.spyOn(reader, 'shouldUseForRange').mockReturnValue(true);
+    vi.spyOn(reader, 'getEntityDailyTotals').mockResolvedValue([{ bucket: 0, upload: 12, download: 34 }]);
+    const details = vi.spyOn(reader, 'getEntityDeviceDailyTotals').mockResolvedValue([{ bucket: 0, sourceIP: base.sourceIP, upload: 12, download: 34 }]);
+    expect((await app.inject(`${url('domain', base.domain)}&includeDevices=true`)).json().devices[0].points[0]).toMatchObject({ upload: 12, download: 34 });
+    details.mockResolvedValue(null);
+    expect((await app.inject(`${url('domain', base.domain)}&includeDevices=true`)).json().devices).toEqual([]);
+    (app.statsService as any).strictStats = true;
+    expect((await app.inject(`${url('domain', base.domain)}&includeDevices=true`)).statusCode).toBe(500);
+  });
+
   it('rejects invalid dimensions, values, ranges and showcase access', async () => {
     for (const request of [url('invalid', 'x'), url('domain', ''), url('domain', 'x', 1), url('domain', 'x', 367), url('domain', 'x').replace('2026-10-11T08', '2026-10-11T08%3A30')]) {
       expect((await app.inject(request)).statusCode).toBe(400);

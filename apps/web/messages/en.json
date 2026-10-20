@@ -631,15 +631,21 @@
           "label": "Top Proxies",
           "description": "Download, upload and connections per proxy node"
         },
+        "deviceDetails": {
+          "label": "Device traffic details",
+          "description": "All device/domain/IP/rule/policy/chain traffic rows, independent of Top N"
+        },
         "devices": {
           "label": "Device Usage",
           "description": "Traffic usage of each device on the local network"
         }
       }
     },
+    "deviceDetailsHint": "Details are grouped by device, domain, destination IP, statistics rule and chain, including IP-only traffic. For multi-hop connections the statistics rule is the top-level policy group; historical raw matched rules were not stored. Exports contain persisted, retained data only, up to 100,000 rows; shorten the range if exceeded.",
+    "detailLimit": "Device details exceed 100,000 rows. Please shorten the export range.",
     "topN": {
       "label": "Top N",
-      "hint": "Export at most the first {count} records per dataset"
+      "hint": "Summary rankings export up to {count} rows each; device details include all rows."
     },
     "format": {
       "title": "Format",
@@ -752,7 +758,18 @@
     "error": "Could not load traffic history. Retry or choose a shorter range (2–366 days).",
     "upload": "Upload",
     "chartLabel": "Daily traffic line chart with {count} points",
-    "period": "Period"
+    "period": "Period",
+    "curveStyle": "Curve style",
+    "linear": "Straight",
+    "smooth": "Smooth",
+    "seriesMode": "Series mode",
+    "byDevice": "By device",
+    "otherDevices": "Other devices",
+    "unknownDevice": "Unknown device",
+    "legend": "Device legend",
+    "device": "Device",
+    "deviceHint": "Shows the top 10 devices by traffic over this range; remaining devices are combined. Records without a source IP appear as unknown.",
+    "countryDeviceHint": "Device series use the current IP geolocation cache and may differ from saved country totals."
   },
   "deviceComparison": {
     "new": "New",

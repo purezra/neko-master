@@ -5,10 +5,28 @@
  * traffic in range, traffic trend and aggregated trend.
  */
 import type Database from 'better-sqlite3';
-import type { HourlyStats, TrafficEntityDimension, DailyTrafficTotals } from '@neko-master/shared';
+import type { HourlyStats, TrafficEntityDimension, DailyTrafficTotals, DeviceDailyTrafficTotals } from '@neko-master/shared';
 import { BaseRepository } from './base.repository.js';
 
 export class TimeseriesRepository extends BaseRepository {
+  getEntityDeviceDailyTotals(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string): DeviceDailyTrafficTotals[] {
+    const column = dimension === 'proxy'
+      ? "TRIM(CASE WHEN INSTR(m.chain, ' > ') > 0 THEN SUBSTR(m.chain, 1, INSTR(m.chain, ' > ') - 1) ELSE m.chain END)"
+      : dimension === 'country' ? "COALESCE(NULLIF(g.country, ''), 'UNKNOWN')" : 'm.domain';
+    return this.db.prepare(`WITH daily AS (
+      SELECT CAST((strftime('%s', m.hour) - ?) / 86400 AS INTEGER) AS bucket, m.source_ip AS sourceIP,
+        SUM(m.upload) AS upload, SUM(m.download) AS download FROM hourly_dim_stats m
+        ${dimension === 'country' ? 'LEFT JOIN geoip_cache g ON m.ip = g.ip' : ''}
+        WHERE m.backend_id = ? AND m.hour >= ? AND m.hour < ? AND ${column} = ?
+        GROUP BY bucket, m.source_ip
+      ), top_devices AS (SELECT sourceIP FROM daily GROUP BY sourceIP ORDER BY SUM(upload + download) DESC, sourceIP LIMIT 10)
+      SELECT bucket, CASE WHEN sourceIP IN (SELECT sourceIP FROM top_devices) THEN sourceIP ELSE NULL END AS sourceIP,
+        SUM(upload) AS upload, SUM(download) AS download FROM daily
+      GROUP BY bucket, CASE WHEN sourceIP IN (SELECT sourceIP FROM top_devices) THEN sourceIP ELSE NULL END
+      ORDER BY bucket, sourceIP`).all(Date.parse(start) / 1000, backendId,
+        this.toHourKey(new Date(start)), this.toHourKey(new Date(end)), value) as DeviceDailyTrafficTotals[];
+  }
+
   getEntityDailyTotals(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string): DailyTrafficTotals[] {
     const table = dimension === 'country' ? 'hourly_country_stats' : 'hourly_dim_stats';
     // Match the overview's first-hop proxy aggregation without LIKE wildcards.

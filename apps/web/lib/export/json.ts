@@ -18,6 +18,8 @@ export interface ExportJsonPayload {
     string,
     {
       label: string;
+      /** null means all retained detail rows, independent of the global Top N. */
+      topN: number | null;
       columns: Array<{ key: string; label: string }>;
       rows: Array<Record<string, string | number | boolean | null>>;
     }
@@ -53,6 +55,7 @@ export function buildExportJsonPayload(
         dataset.id,
         {
           label: localized(dataset.label),
+          topN: dataset.id === "deviceDetails" || dataset.id === "summary" ? null : meta.topN,
           columns: dataset.columns.map((column) => ({
             key: column.key,
             label: localized(column.label),

@@ -1,6 +1,7 @@
 import type {
   CountryStats,
   DeviceStats,
+  DeviceTrafficDetail,
   DomainStats,
   IPStats,
   ProxyStats,
@@ -19,6 +20,7 @@ export const EXPORT_DATASET_IDS = [
   "countries",
   "proxies",
   "devices",
+  "deviceDetails",
 ] as const;
 
 export type ExportDatasetId = (typeof EXPORT_DATASET_IDS)[number];
@@ -54,11 +56,12 @@ export interface ExportSourceData {
   devices: DeviceStats[];
   domains: DomainStats[];
   ips: IPStats[];
+  deviceDetails?: DeviceTrafficDetail[];
 }
 
 export interface BuildExportDatasetsParams {
   sources: ExportSourceData;
-  enabled: Record<ExportDatasetId, boolean>;
+  enabled: Partial<Record<ExportDatasetId, boolean>>;
   topN: number;
   timeRange: TimeRange;
   backendName: string;
@@ -347,6 +350,34 @@ export function buildExportDatasets(
         LAST_SEEN_COLUMN,
       ],
       rows,
+    });
+  }
+
+  if (enabled.deviceDetails) {
+    datasets.push({
+      id: "deviceDetails",
+      label: { zh: "设备访问明细", en: "Device Traffic Details" },
+      columns: [
+        { key: "sourceIP", label: { zh: "设备 IP", en: "Device IP" } },
+        { key: "displayName", label: { zh: "设备备注", en: "Device Name" } },
+        { key: "groupName", label: { zh: "设备分组", en: "Device Group" } },
+        { key: "domain", label: { zh: "域名", en: "Domain" } },
+        { key: "ip", label: { zh: "目标 IP", en: "Destination IP" } },
+        { key: "rule", label: { zh: "统计规则", en: "Statistics Rule" } },
+        { key: "policyGroup", label: { zh: "策略组", en: "Policy Group" } },
+        { key: "proxy", label: { zh: "出口代理", en: "Outbound Proxy" } },
+        { key: "chain", label: { zh: "完整代理链", en: "Full Proxy Chain" } },
+        TOTAL_BYTES_COLUMN, DOWNLOAD_BYTES_COLUMN, UPLOAD_BYTES_COLUMN, CONNECTIONS_COLUMN, LAST_SEEN_COLUMN,
+      ],
+      // This dataset is complete and grouped by device, independent of Top N.
+      rows: (sources.deviceDetails ?? []).map(item => {
+        const hops = item.chain.split(" > ").map(hop => hop.trim()).filter(Boolean);
+        return { sourceIP: item.sourceIP, displayName: item.displayName ?? "", groupName: item.groupName ?? "",
+          domain: item.domain, ip: item.ip, rule: item.rule,
+          policyGroup: hops.length > 1 ? hops[hops.length - 1] : "", proxy: hops[0] ?? "", chain: item.chain,
+          totalBytes: totalOf(item), downloadBytes: item.totalDownload, uploadBytes: item.totalUpload,
+          connections: item.totalConnections, lastSeen: item.lastSeen ? parseApiTimestamp(item.lastSeen) : null };
+      }),
     });
   }
 

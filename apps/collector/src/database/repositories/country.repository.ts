@@ -16,6 +16,12 @@ export interface CountryStatsRow {
 }
 
 export class CountryRepository extends BaseRepository {
+  getCachedIPs(country: string): string[] {
+    // UNKNOWN needs the known IP set so uncached targets remain included.
+    return (this.db.prepare(`SELECT ip FROM geoip_cache WHERE ${country === 'UNKNOWN' ? "country != 'UNKNOWN' AND country != ''" : 'country = ?'}`)
+      .all(...(country === 'UNKNOWN' ? [] : [country])) as Array<{ ip: string }>).map(row => row.ip);
+  }
+
   constructor(db: Database.Database) {
     super(db);
   }

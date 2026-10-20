@@ -41,7 +41,7 @@ function buildSheet(
   ]);
   data.push([
     {
-      value: `${formatExportRange(meta)} · Top ${meta.topN}`,
+      value: `${formatExportRange(meta)} · ${dataset.id === "deviceDetails" ? locale.startsWith("zh") ? "全部设备明细" : "All device details" : `Top ${meta.topN}`}`,
       textColor: "#71717a",
       fontSize: 10,
       wrap: true,

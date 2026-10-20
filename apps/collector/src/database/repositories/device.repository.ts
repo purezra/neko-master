@@ -4,10 +4,21 @@
  * Handles device (source IP) statistics and their domain/IP breakdowns.
  */
 import type Database from 'better-sqlite3';
-import type { DomainStats, IPStats, DeviceStats, DeviceProfile } from '@neko-master/shared';
+import type { DomainStats, IPStats, DeviceStats, DeviceProfile, DeviceTrafficDetail } from '@neko-master/shared';
 import { BaseRepository } from './base.repository.js';
 
 export class DeviceRepository extends BaseRepository {
+  getTrafficDetails(backendId: number, start: string, end: string, offset: number, limit: number): DeviceTrafficDetail[] {
+    const resolved = this.resolveFactTable(start, end);
+    return this.db.prepare(`SELECT source_ip AS sourceIP, domain, ip, rule, chain,
+      SUM(upload) AS totalUpload, SUM(download) AS totalDownload, SUM(connections) AS totalConnections,
+      MAX(${resolved.timeCol}) AS lastSeen FROM ${resolved.table}
+      WHERE backend_id = ? AND ${resolved.timeCol} >= ? AND ${resolved.timeCol} <= ?
+      GROUP BY source_ip, domain, ip, rule, chain
+      ORDER BY source_ip, domain, ip, rule, chain LIMIT ? OFFSET ?`)
+      .all(backendId, resolved.startKey, resolved.endKey, limit, offset) as DeviceTrafficDetail[];
+  }
+
   getProfiles(backendId: number): DeviceProfile[] {
     return this.db.prepare(`SELECT source_ip AS sourceIP, display_name AS displayName, group_name AS groupName
       FROM device_profiles WHERE backend_id = ? ORDER BY source_ip`).all(backendId) as DeviceProfile[];

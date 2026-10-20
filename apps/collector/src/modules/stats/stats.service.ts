@@ -23,7 +23,7 @@ import type {
 import { ClickHouseReader } from '../clickhouse/clickhouse.reader.js';
 import { resolveComparisonRanges } from './comparison-range.js';
 import type { DeviceDomainComparisonOptions, DeviceDomainComparison } from '@neko-master/shared';
-import type { ComparisonRange, DeviceProfile, TrafficComparison, TrafficComparisonRow, TrafficEntityDimension, EntityDailyTrend } from '@neko-master/shared';
+import type { ComparisonRange, DeviceProfile, TrafficComparison, TrafficComparisonRow, TrafficEntityDimension, EntityDailyTrend, DeviceTrafficDetailPage } from '@neko-master/shared';
 
 interface PaginatedStatsOptions {
   offset?: number;
@@ -38,6 +38,18 @@ interface PaginatedStatsOptions {
 type RoutedSource = 'clickhouse' | 'sqlite';
 
 export class StatsService {
+  async getDeviceTrafficDetailsWithRouting(backendId: number, start: string, end: string, offset: number, limit: number): Promise<DeviceTrafficDetailPage> {
+    let rows = this.clickHouseReader.shouldUseForRange(start, end)
+      ? await this.clickHouseReader.getDeviceTrafficDetails(backendId, start, end, offset, limit + 1) : null;
+    if (rows === null) {
+      this.failIfStrictFallback('device-traffic-details');
+      this.recordRoute('device-traffic-details', 'sqlite');
+      rows = this.db.repos.device.getTrafficDetails(backendId, start, end, offset, limit + 1);
+    } else this.recordRoute('device-traffic-details', 'clickhouse');
+    const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile]));
+    return { hasMore: rows.length > limit, rows: rows.slice(0, limit).map(row => ({ ...row, ...profiles.get(row.sourceIP) })) };
+  }
+
   async getDeviceDomainComparisonWithRouting(backendId: number, sourceIP: string, currentRange: ComparisonRange, baselineRange: ComparisonRange, options: DeviceDomainComparisonOptions): Promise<DeviceDomainComparison> {
     if (!this.db.getBackend(backendId)) throw new Error('Backend not found');
     const [current, baseline] = resolveComparisonRanges(currentRange, baselineRange);
@@ -55,7 +67,7 @@ export class StatsService {
     return { ...result, device: profile ?? { sourceIP, displayName: '', groupName: '' }, currentRange, baselineRange };
   }
 
-  async getEntityDailyTrendWithRouting(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string): Promise<EntityDailyTrend> {
+  async getEntityDailyTrendWithRouting(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string, includeDevices = false): Promise<EntityDailyTrend> {
     if (!this.db.getBackend(backendId)) throw new Error('Backend not found');
     const from = Date.parse(start), to = Date.parse(end);
     const day = 86400000;
@@ -71,7 +83,32 @@ export class StatsService {
       rows = this.db.repos.timeseries.getEntityDailyTotals(backendId, dimension, value, start, end);
     } else this.recordRoute('entity-daily-trend', 'clickhouse');
     const totals = new Map(rows.map(row => [row.bucket, row]));
+    let devices: EntityDailyTrend['devices'];
+    if (includeDevices) {
+      const countryIPs = dimension === 'country' ? this.db.repos.country.getCachedIPs(value) : [];
+      let deviceRows = this.clickHouseReader.shouldUseForRange(start, end)
+        ? await this.clickHouseReader.getEntityDeviceDailyTotals(backendId, dimension, value, start, end, countryIPs) : null;
+      if (deviceRows === null) {
+        this.failIfStrictFallback('entity-device-daily-trend');
+        this.recordRoute('entity-device-daily-trend', 'sqlite');
+        deviceRows = this.db.repos.timeseries.getEntityDeviceDailyTotals(backendId, dimension, value, start, end);
+      } else this.recordRoute('entity-device-daily-trend', 'clickhouse');
+      const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile.displayName]));
+      const grouped = new Map<string | null, Map<number, { upload: number; download: number }>>();
+      for (const row of deviceRows) {
+        if (!grouped.has(row.sourceIP)) grouped.set(row.sourceIP, new Map());
+        grouped.get(row.sourceIP)!.set(row.bucket, row);
+      }
+      devices = [...grouped].map(([sourceIP, buckets]) => ({ sourceIP,
+        displayName: sourceIP ? profiles.get(sourceIP) : undefined,
+        points: Array.from({ length: Math.ceil((to - from) / day) }, (_, index) => ({
+          start: new Date(from + index * day).toISOString(), end: new Date(Math.min(to, from + (index + 1) * day)).toISOString(),
+          upload: buckets.get(index)?.upload ?? 0, download: buckets.get(index)?.download ?? 0,
+        })),
+      })).sort((a, b) => b.points.reduce((sum, p) => sum + p.upload + p.download, 0) - a.points.reduce((sum, p) => sum + p.upload + p.download, 0));
+    }
     return { dimension, value, start: new Date(from).toISOString(), end: new Date(to).toISOString(),
+      ...(devices ? { devices } : {}),
       points: Array.from({ length: Math.ceil((to - from) / day) }, (_, index) => ({
         start: new Date(from + index * day).toISOString(), end: new Date(Math.min(to, from + (index + 1) * day)).toISOString(),
         upload: totals.get(index)?.upload ?? 0, download: totals.get(index)?.download ?? 0,

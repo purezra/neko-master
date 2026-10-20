@@ -8,6 +8,8 @@ import type {
   TrafficComparisonRow,
   TrafficEntityDimension,
   DailyTrafficTotals,
+  DeviceDailyTrafficTotals,
+  DeviceTrafficDetail,
   DeviceDomainComparisonOptions,
   DeviceDomainComparisonPage,
 } from '@neko-master/shared';
@@ -57,6 +59,34 @@ export type ClickHouseSummary = {
 };
 
 export class ClickHouseReader {
+  async getDeviceTrafficDetails(backendId: number, start: string, end: string, offset: number, limit: number): Promise<DeviceTrafficDetail[] | null> {
+    const rows = await this.query<Record<string, unknown>>(`SELECT source_ip AS sourceIP, domain, ip, rule, chain,
+      SUM(upload) AS totalUpload, SUM(download) AS totalDownload, SUM(connections) AS totalConnections,
+      toString(max(minute)) AS lastSeen FROM ${this.config.database}.traffic_detail_buffer
+      WHERE backend_id = ${backendId} AND minute >= toDateTime('${this.toDateTime(start)}')
+      AND minute <= toDateTime('${this.toDateTime(end)}') GROUP BY source_ip, domain, ip, rule, chain
+      ORDER BY source_ip, domain, ip, rule, chain LIMIT ${limit} OFFSET ${offset}`);
+    return rows?.map(row => ({ sourceIP: String(row.sourceIP), domain: String(row.domain), ip: String(row.ip),
+      rule: String(row.rule), chain: String(row.chain), lastSeen: String(row.lastSeen), totalUpload: Number(row.totalUpload),
+      totalDownload: Number(row.totalDownload), totalConnections: Number(row.totalConnections) })) ?? null;
+  }
+
+  async getEntityDeviceDailyTotals(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string, countryIPs: string[] = []): Promise<DeviceDailyTrafficTotals[] | null> {
+    const filter = dimension === 'country'
+      ? countryIPs.length ? `ip ${value === 'UNKNOWN' ? 'NOT IN' : 'IN'} (${countryIPs.map(ip => `'${this.esc(ip)}'`).join(',')})` : value === 'UNKNOWN' ? '1=1' : '0=1'
+      : `${dimension === 'proxy' ? "trimBoth(arrayElement(splitByString(' > ', chain), 1))" : 'domain'} = '${this.esc(value)}'`;
+    const rows = await this.query<Record<string, unknown>>(`WITH daily AS (
+      SELECT intDiv(toInt64(toUnixTimestamp(minute)) - ${Date.parse(start) / 1000}, 86400) AS bucket,
+        source_ip, SUM(upload) AS upload, SUM(download) AS download FROM ${this.config.database}.traffic_detail_buffer
+      WHERE backend_id = ${backendId} AND minute >= toDateTime('${this.toDateTime(start)}')
+        AND minute < toDateTime('${this.toDateTime(end)}') AND ${filter} GROUP BY bucket, source_ip
+      ), top_devices AS (SELECT source_ip FROM daily GROUP BY source_ip ORDER BY SUM(upload + download) DESC, source_ip LIMIT 10)
+      SELECT bucket, if(source_ip IN (SELECT source_ip FROM top_devices), toNullable(source_ip), NULL) AS sourceIP,
+        SUM(upload) AS upload, SUM(download) AS download FROM daily GROUP BY bucket, sourceIP ORDER BY bucket, sourceIP`);
+    return rows?.map(row => ({ bucket: Number(row.bucket), sourceIP: row.sourceIP === null ? null : String(row.sourceIP),
+      upload: Number(row.upload), download: Number(row.download) })) ?? null;
+  }
+
   async getDeviceDomainComparison(backendId: number, sourceIP: string, current: ComparisonRange, baseline: ComparisonRange, options: DeviceDomainComparisonOptions): Promise<DeviceDomainComparisonPage | null> {
     const range = (period: ComparisonRange) => `minute >= toDateTime('${this.toDateTime(period.start)}') AND minute <= toDateTime('${this.toDateTime(period.end)}')`;
     const cte = `WITH compared AS (SELECT domain AS key, SUMIf(upload + download, ${range(current)}) AS currentBytes,

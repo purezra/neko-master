@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -23,15 +24,29 @@ export function EntityTrendDialog({ entity, backendId, range, onClose }: {
   const locale = useLocale();
   const countryName = useCountryName();
   const { chartColors } = useThemePalette();
+  const [smooth, setSmooth] = useState(false);
+  const [byDevice, setByDevice] = useState(false);
   const query = useQuery({
-    queryKey: getEntityDailyTrendQueryKey(backendId, entity.dimension, entity.value, range),
-    queryFn: () => api.getEntityDailyTrend(backendId, entity.dimension, entity.value, range),
+    queryKey: getEntityDailyTrendQueryKey(backendId, entity.dimension, entity.value, range, byDevice),
+    queryFn: () => api.getEntityDailyTrend(backendId, entity.dimension, entity.value, range, byDevice),
     staleTime: 60_000,
   });
   const points = query.data?.points.map(point => ({ ...point, total: point.upload + point.download })) ?? [];
+  const series = byDevice ? (query.data?.devices ?? []).map((device, index) => ({
+    key: `device${index}`,
+    name: device.sourceIP === null ? t("otherDevices") : device.sourceIP === "" ? t("unknownDevice")
+      : device.displayName ? `${device.displayName} (${device.sourceIP})` : device.sourceIP,
+    points: device.points,
+    color: chartColors[index % chartColors.length],
+  })) : [{ key: "total", name: t("total"), points, color: chartColors[0] }];
+  const chartPoints = points.map((point, index) => ({ ...point,
+    ...Object.fromEntries(series.map(item => [item.key, (item.points[index]?.upload ?? 0) + (item.points[index]?.download ?? 0)])),
+  }));
   const dateTime = (time: string) => new Date(time).toLocaleString(locale, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
   const day = (time: string) => new Date(time).toLocaleDateString(locale, { month: "2-digit", day: "2-digit" });
-  const total = points.reduce((sum, point) => sum + point.total, 0);
+  const total = byDevice
+    ? series.reduce((sum, item) => sum + item.points.reduce((bytes, point) => bytes + point.upload + point.download, 0), 0)
+    : points.reduce((sum, point) => sum + point.total, 0);
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
     <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-4xl">
       <DialogHeader>
@@ -44,26 +59,44 @@ export function EntityTrendDialog({ entity, backendId, range, onClose }: {
         <DialogDescription>{t("description")}</DialogDescription>
       </DialogHeader>
       <p className="text-xs text-muted-foreground">{dateTime(range.start)} ~ {dateTime(range.end)}</p>
+      <div className="flex flex-wrap gap-3">
+        <div role="group" aria-label={t("curveStyle")} className="flex flex-wrap gap-1 rounded-lg border border-border p-1">
+          <Button size="sm" variant={!smooth ? "secondary" : "ghost"} aria-pressed={!smooth} onClick={() => setSmooth(false)}>{t("linear")}</Button>
+          <Button size="sm" variant={smooth ? "secondary" : "ghost"} aria-pressed={smooth} onClick={() => setSmooth(true)}>{t("smooth")}</Button>
+        </div>
+        <div role="group" aria-label={t("seriesMode")} className="flex flex-wrap gap-1 rounded-lg border border-border p-1">
+          <Button size="sm" variant={!byDevice ? "secondary" : "ghost"} aria-pressed={!byDevice} onClick={() => setByDevice(false)}>{t("total")}</Button>
+          <Button size="sm" variant={byDevice ? "secondary" : "ghost"} aria-pressed={byDevice} onClick={() => setByDevice(true)}>{t("byDevice")}</Button>
+        </div>
+      </div>
+      {byDevice && <p className="text-xs leading-relaxed text-muted-foreground">{t("deviceHint")}{entity.dimension === "country" && <> {t("countryDeviceHint")}</>}</p>}
       {query.isError ? <div role="alert" className="space-y-3 rounded-lg border border-border p-5"><p className="text-sm text-destructive">{t("error")}</p><Button variant="outline" onClick={() => void query.refetch()}>{t("retry")}</Button></div>
         : !query.data ? <div className="h-72 animate-pulse rounded-xl bg-muted" aria-busy="true" aria-label={t("loading")} />
         : <>
           <div className="flex flex-wrap items-center gap-3 text-sm"><span className="font-semibold">{t("total")}: {formatBytes(total)}</span><span className="text-muted-foreground">{t("points", { count: points.length })}</span></div>
-          {total === 0 && <p role="status" className="text-sm text-muted-foreground">{t("empty")}</p>}
+          {(byDevice ? series.length === 0 : total === 0) && <p role="status" className="text-sm text-muted-foreground">{t("empty")}</p>}
+          {byDevice && <div className="flex max-h-28 flex-wrap gap-x-4 gap-y-2 overflow-auto text-xs" aria-label={t("legend")}>
+            {series.map(item => <span key={item.key} className="flex min-w-0 items-start gap-1.5"><span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} /><span className="break-all">{item.name}</span></span>)}
+          </div>}
           <div className="h-72 w-full min-w-0 sm:h-80" role="img" aria-label={t("chartLabel", { count: points.length })}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={points} margin={{ top: 15, right: 15, bottom: 5, left: 5 }} accessibilityLayer>
+              <LineChart data={chartPoints} margin={{ top: 15, right: 15, bottom: 5, left: 5 }} accessibilityLayer>
                 <CartesianGrid stroke="currentColor" opacity={0.12} strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="start" tickFormatter={day} minTickGap={25} tick={{ fill: "currentColor", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={value => formatBytes(Number(value), 0)} width={65} tick={{ fill: "currentColor", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip content={({ active, payload }) => {
                   const point = payload?.[0]?.payload as (EntityDailyTrend["points"][number] & { total: number }) | undefined;
-                  return active && point ? <div className="max-w-[calc(100vw-3rem)] space-y-1 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg"><p>{dateTime(point.start)} ~ {dateTime(point.end)}</p><p>{t("total")}: {formatBytes(point.total)}</p><p>{t("download")}: {formatBytes(point.download)}</p><p>{t("upload")}: {formatBytes(point.upload)}</p></div> : null;
+                  const index = points.findIndex(item => item.start === point?.start);
+                  return active && point ? <div className="max-h-72 max-w-[calc(100vw-3rem)] space-y-2 overflow-auto rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg"><p>{dateTime(point.start)} ~ {dateTime(point.end)}</p>{series.map(item => {
+                    const values = item.points[index];
+                    return values && <div key={item.key} className="space-y-1"><p className="flex items-start gap-1.5 font-medium"><span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} /><span className="break-all">{item.name}: {formatBytes(values.upload + values.download)}</span></p><p>{t("download")}: {formatBytes(values.download)} · {t("upload")}: {formatBytes(values.upload)}</p></div>;
+                  })}</div> : null;
                 }} />
-                <Line name={t("total")} dataKey="total" type="linear" stroke={chartColors[0]} strokeWidth={2} dot={{ r: 3, fill: chartColors[0] }} activeDot={{ r: 5 }} isAnimationActive={false} />
+                {series.map(item => <Line key={item.key} name={item.name} dataKey={item.key} type={smooth ? "monotone" : "linear"} stroke={item.color} strokeWidth={2} dot={{ r: byDevice ? 2 : 3, fill: item.color }} activeDot={{ r: 5 }} isAnimationActive={false} />)}
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <details className="text-xs"><summary className="cursor-pointer text-muted-foreground">{t("table")}</summary><div className="mt-3 max-h-52 overflow-auto"><table className="w-full text-left tabular-nums"><thead><tr><th className="p-2">{t("period")}</th><th className="p-2">{t("download")}</th><th className="p-2">{t("upload")}</th><th className="p-2">{t("total")}</th></tr></thead><tbody>{points.map(point => <tr key={point.start} className="border-t border-border"><td className="p-2">{dateTime(point.start)} ~ {dateTime(point.end)}</td><td className="p-2">{formatBytes(point.download)}</td><td className="p-2">{formatBytes(point.upload)}</td><td className="p-2">{formatBytes(point.total)}</td></tr>)}</tbody></table></div></details>
+          <details className="min-w-0 text-xs"><summary className="cursor-pointer text-muted-foreground">{t("table")}</summary><div className="mt-3 max-h-52 max-w-full overflow-auto"><table className="w-full text-left tabular-nums"><thead><tr><th className="p-2">{t("period")}</th>{byDevice && <th className="p-2">{t("device")}</th>}<th className="p-2">{t("download")}</th><th className="p-2">{t("upload")}</th><th className="p-2">{t("total")}</th></tr></thead><tbody>{series.flatMap(item => item.points.map(point => <tr key={`${item.key}-${point.start}`} className="border-t border-border"><td className="whitespace-nowrap p-2">{dateTime(point.start)} ~ {dateTime(point.end)}</td>{byDevice && <td className="min-w-32 break-all p-2">{item.name}</td>}<td className="whitespace-nowrap p-2">{formatBytes(point.download)}</td><td className="whitespace-nowrap p-2">{formatBytes(point.upload)}</td><td className="whitespace-nowrap p-2">{formatBytes(point.upload + point.download)}</td></tr>))}</tbody></table></div></details>
         </>}
     </DialogContent>
   </Dialog>;
