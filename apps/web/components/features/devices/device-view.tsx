@@ -20,6 +20,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InteractiveDeviceStats } from "./interactive-device-stats";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DeviceTrafficDetails } from "./device-traffic-details";
 
 interface DeviceViewProps {
   data: DeviceStats[];
@@ -32,6 +34,7 @@ interface DeviceViewProps {
 export function DeviceView(props: DeviceViewProps) {
   const { data, activeBackendId, timeRange } = props;
   const t = useTranslations("devices");
+  const detailsT = useTranslations("deviceDetails");
   const locale = useLocale();
   const client = useQueryClient();
   const { data: auth } = useAuthState();
@@ -70,7 +73,10 @@ export function DeviceView(props: DeviceViewProps) {
     downloadBlob(getExportFileName("csv", meta), new Blob([buildExportCsv(datasets, meta, locale)], { type: "text/csv;charset=utf-8" }));
   };
 
-  return <div className="space-y-4">
+  return <Tabs defaultValue="overview" className="min-w-0 space-y-4">
+    <TabsList><TabsTrigger value="overview">{detailsT("overviewTab")}</TabsTrigger><TabsTrigger value="details">{detailsT("detailsTab")}</TabsTrigger></TabsList>
+    <TabsContent value="details" className="min-w-0"><DeviceTrafficDetails backendId={activeBackendId} range={timeRange} /></TabsContent>
+    <TabsContent value="overview" className="space-y-4">
     <Card><CardContent className="space-y-3 p-4 sm:p-5">
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[180px] flex-1">
@@ -94,6 +100,7 @@ export function DeviceView(props: DeviceViewProps) {
     {data.length > 0 && !filtered.length
       ? <Card><CardContent className="space-y-3 p-8 text-center"><p className="text-sm text-muted-foreground">{t("noMatches")}</p><Button variant="outline" onClick={() => { setSearch(""); setGroup("all"); }}>{t("clearFilters")}</Button></CardContent></Card>
       : <InteractiveDeviceStats {...props} data={filtered.slice(0, 100)} />}
+    </TabsContent>
     <Dialog open={!!editing} onOpenChange={open => { if (!open && !save.isPending) setEditing(null); }}>
       <DialogContent showCloseButton={false}>
         <DialogHeader><DialogTitle>{t("manage")}</DialogTitle><DialogDescription>{t("profileHint")}</DialogDescription></DialogHeader>
@@ -108,5 +115,5 @@ export function DeviceView(props: DeviceViewProps) {
         </form>}
       </DialogContent>
     </Dialog>
-  </div>;
+  </Tabs>;
 }

@@ -6,7 +6,7 @@ import { isIP } from 'node:net';
 import type { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import type { StatsService } from './stats.service.js';
 import type { TimeRange } from './stats.types.js';
-import type { DeviceProfile, TrafficEntityDimension, DeviceDomainComparisonOptions } from '@neko-master/shared';
+import type { DeviceProfile, TrafficEntityDimension, DeviceDomainComparisonOptions, DeviceTrafficFilters } from '@neko-master/shared';
 
 // Extend Fastify instance to include statsService
 declare module 'fastify' {
@@ -142,7 +142,7 @@ const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Pr
       dimension: { type: 'string', enum: ['domain', 'proxy', 'country'] },
       value: { type: 'string', minLength: 1, maxLength: 512 },
       start: { type: 'string' }, end: { type: 'string' },
-      includeDevices: { type: 'string', enum: ['true', 'false'] },
+      includeDevices: { type: 'string', enum: ['true', 'false'] }, sourceIP: { type: 'string', maxLength: 64 },
     },
   } } }, async (request, reply) => {
     const id = getBackendId(request, service);
@@ -150,7 +150,7 @@ const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Pr
     if (fastify.authService.isShowcaseMode()) return reply.status(403).send({ error: 'Showcase history is limited to 24 hours' });
     const query = request.query as Record<string, string>;
     try {
-      return await service.getEntityDailyTrendWithRouting(id, query.dimension as TrafficEntityDimension, query.value, query.start, query.end, query.includeDevices === 'true');
+      return await service.getEntityDailyTrendWithRouting(id, query.dimension as TrafficEntityDimension, query.value, query.start, query.end, query.includeDevices === 'true', query.sourceIP);
     } catch (error: unknown) {
       if (error instanceof RangeError) return reply.status(400).send({ error: error.message });
       if (error instanceof Error && error.message === 'Backend not found') return reply.status(404).send({ error: error.message });
@@ -170,14 +170,19 @@ const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Pr
       backendId: { type: 'string', pattern: '^[0-9]+$' }, start: { type: 'string' }, end: { type: 'string' },
       offset: { type: 'integer', minimum: 0, maximum: 1000000, default: 0 },
       limit: { type: 'integer', minimum: 1, maximum: 1000, default: 1000 },
+      sourceIP: { type: 'string', maxLength: 64 }, groupName: { type: 'string', maxLength: 40 },
+      ungrouped: { type: 'boolean' }, domain: { type: 'string', maxLength: 253 }, rule: { type: 'string', maxLength: 512 }, policyGroup: { type: 'string', maxLength: 512 },
+      sortBy: { type: 'string', enum: ['device', 'domain', 'totalTraffic', 'totalUpload', 'totalDownload', 'totalConnections', 'lastSeen'] },
+      sortOrder: { type: 'string', enum: ['asc', 'desc'] },
     },
   } } }, async (request, reply) => {
     const id = getBackendId(request, service);
     if (id === null || service.getDeviceProfiles(id) === null) return reply.status(404).send({ error: 'Backend not found' });
     const range = getTimeRange(request, reply, fastify.authService.isShowcaseMode());
     if (!range) return;
-    const query = request.query as { offset: number; limit: number };
-    return service.getDeviceTrafficDetailsWithRouting(id, range.start!, range.end!, query.offset, query.limit);
+    const { offset, limit, sourceIP, groupName, ungrouped, domain, rule, policyGroup, sortBy, sortOrder } = request.query as DeviceTrafficFilters & { offset: number; limit: number };
+    return service.getDeviceTrafficDetailsWithRouting(id, range.start!, range.end!, offset, limit,
+      { sourceIP, groupName, ungrouped, domain, rule, policyGroup, sortBy, sortOrder });
   });
 
   fastify.put('/devices/profiles', { schema: { body: {

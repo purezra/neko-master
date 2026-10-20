@@ -49,6 +49,7 @@ export interface ExportFileMeta {
   requestedRange?: { start: string; end: string };
   topN: number;
   exportedAt: Date;
+  deviceScope?: string;
 }
 
 export function formatExportRange(meta: ExportFileMeta): string {
@@ -65,7 +66,9 @@ export function getExportFileStem(meta: ExportFileMeta): string {
     .replace(/\s+/g, "_")
     .slice(0, 40) || "backend";
   const range = meta.requestedRange ?? meta;
-  return `neko-master-${backend}_${stamp(range.start)}_${stamp(range.end)}`;
+  const scope = meta.deviceScope && meta.deviceScope !== "all"
+    ? `_${meta.deviceScope.replace(/[<>:"/\\|?*]|\p{Cc}/gu, "_").replace(/\s+/g, "_").slice(0, 64)}` : "";
+  return `neko-master-${backend}${scope}_${stamp(range.start)}_${stamp(range.end)}`;
 }
 
 export function getExportFileName(

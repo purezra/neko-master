@@ -91,6 +91,8 @@ export class ClickHouseWriter {
       source_ip: item.sourceIP || '',
       chain: item.chains.join(' > ') || item.chain || 'DIRECT',
       rule: buildRuleName(item),
+      matched_rule: item.rule.trim(),
+      rule_payload: item.rulePayload.trim(),
       upload: Math.max(0, Math.floor(item.upload)),
       download: Math.max(0, Math.floor(item.download)),
       connections: Math.max(0, Math.floor(item.connections ?? 1)),

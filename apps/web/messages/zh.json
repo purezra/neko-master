@@ -591,6 +591,10 @@
     }
   },
   "export": {
+    "deviceScope": "设备导出范围",
+    "deviceScopeHint": "指定设备或分组时，仅导出对应的设备统计与访问明细；其他全局汇总项暂停选择，避免混入全网数据。",
+    "splitSheets": "Excel 设备明细：每台设备独立工作表",
+    "preferencesHint": "格式、数据项、Top 数量、设备范围和分表设置会在此浏览器中按网关记住。",
     "timeZoneHint": "时间均为北京时间（UTC+08:00）。文件名使用所选范围，文件内容注明实际统计范围。",
     "selectedRange": "所选范围：{start} ~ {end}",
     "hourAlignmentHint": "本次按完整小时统计，起止时间均向下对齐到整点；尚未结束的小时留待下次导出。",
@@ -632,6 +636,8 @@
           "description": "各代理节点的下载、上传与连接数"
         },
         "deviceDetails": {
+    "overviewTab": "设备概览",
+    "detailsTab": "访问明细",
           "label": "设备访问明细",
           "description": "按设备导出全部域名、目标 IP、统计规则、策略组、代理链及流量，不受 Top 数量限制"
         },
@@ -641,7 +647,7 @@
         }
       }
     },
-    "deviceDetailsHint": "设备明细按设备、域名、目标 IP、统计规则和代理链分别汇总，包含无域名的 IP 访问。多跳连接的统计规则是顶层策略组，旧数据未保存原始命中规则。仅导出保留期内已落盘数据，最多 100,000 行；超限请缩短时间范围。",
+    "deviceDetailsHint": "设备明细按设备、域名、目标 IP、统计规则、原始规则及参数、代理链分别汇总，包含仅 IP 访问。原始规则从升级后开始保存，旧数据为空。仅导出保留期内已落盘数据，最多 100,000 行；超限请缩短时段或选择单台设备。",
     "detailLimit": "设备明细超过 100,000 行，请缩短导出时间范围。",
     "topN": {
       "label": "Top 数量",
@@ -745,6 +751,10 @@
     "domainCount": "{count} 个域名 · 最多 10 个"
   },
   "entityTrend": {
+    "metric": "流量方向",
+    "toggleDevice": "显示或隐藏 {device}",
+    "showAll": "全部显示",
+    "noVisible": "所有设备曲线均已隐藏，可点击图例或全部显示恢复。",
     "empty": "所选时段内暂无该条目的流量记录",
     "points": "共 {count} 个数据点",
     "total": "总流量",
@@ -768,7 +778,7 @@
     "unknownDevice": "未知设备",
     "legend": "设备图例",
     "device": "设备",
-    "deviceHint": "按时段总流量展示前 10 台设备，其余合并为其他设备；无来源 IP 的记录计入未知设备。",
+    "deviceHint": "全部设备模式显示流量前 10 台，其余合并；可选择任意单台设备，点击图例显示或隐藏曲线。",
     "countryDeviceHint": "国家分设备曲线通过当前 IP 地理缓存匹配，可能与已保存的国家总量不同。"
   },
   "deviceComparison": {
@@ -795,5 +805,58 @@
     "error": "域名对比加载失败，请重试",
     "noMatches": "没有符合条件的域名，可切换筛选或清空搜索",
     "change": "流量变化"
+  },
+  "deviceDetails": {
+    "overviewTab": "设备概览",
+    "detailsTab": "访问明细",
+    "title": "设备访问明细",
+    "description": "按设备、域名、原始命中规则与策略组组合查询。使用已落盘的完整时间桶，起止边界与导出一致；旧数据和网关未上报的原始规则显示为未记录。",
+    "actualRange": "实际查询范围：{start} ~ {end}（不含结束时间）",
+    "scope": "设备范围",
+    "allDevices": "全部设备",
+    "ungrouped": "未分组设备",
+    "groups": "设备分组",
+    "devices": "设备",
+    "catalogError": "设备列表加载失败",
+    "retry": "重试",
+    "domain": "域名 / 目标 IP",
+    "rule": "统计规则",
+    "policyGroup": "策略组",
+    "domainPlaceholder": "输入域名关键词",
+    "rulePlaceholder": "统计规则、原始规则或参数",
+    "policyGroupPlaceholder": "输入顶层策略组名称",
+    "sort": "排序字段",
+    "sortOrder": "排序方向",
+    "descending": "从高到低 / 从新到旧",
+    "ascending": "从低到高 / 从旧到新",
+    "apply": "查询",
+    "reset": "重置筛选",
+    "noRange": "当前没有可查询的网关或完整时间桶。",
+    "error": "设备明细加载失败，请重试。",
+    "loading": "正在加载设备明细",
+    "empty": "没有符合筛选条件的设备访问记录。",
+    "device": "设备",
+    "matchedRule": "原始命中规则",
+    "chain": "完整代理链",
+    "download": "下载",
+    "upload": "上传",
+    "total": "总流量",
+    "connections": "连接数",
+    "lastSeen": "最后活动",
+    "unknownDevice": "未知设备",
+    "ipOnly": "仅 IP 访问",
+    "notRecorded": "未记录",
+    "page": "第 {page} 页 · 本页 {count} 条",
+    "previous": "上一页",
+    "next": "下一页",
+    "sortOptions": {
+      "totalTraffic": "总流量",
+      "totalDownload": "下载流量",
+      "totalUpload": "上传流量",
+      "totalConnections": "连接数",
+      "lastSeen": "最后活动时间",
+      "device": "设备 IP",
+      "domain": "域名"
+    }
   }
 }

@@ -11,6 +11,26 @@ const { unzipSync, strFromU8 } = writerRequire("fflate") as {
 };
 
 describe("generated Excel workbook", () => {
+  it("splits devices into distinct, valid worksheets without dropping raw rules or rows", async () => {
+    const range = { start: "2026-10-18T02:00:00Z", end: "2026-10-19T02:00:00Z" };
+    const base = { domain: "sample.test", ip: "203.0.113.1", rule: "Group", matchedRule: "RuleSet", rulePayload: "ai-rules", chain: "Node > Group", totalUpload: 12, totalDownload: 34, totalConnections: 1, lastSeen: range.start };
+    const datasets = buildExportDatasets({ sources: { devices: [], domains: [], ips: [], rules: [], countries: [], proxies: [], deviceDetails: [
+      { ...base, sourceIP: "192.168.1.2", displayName: "same/name" }, { ...base, sourceIP: "192.168.1.2", domain: "other.test" },
+      { ...base, sourceIP: "192.168.1.3", displayName: "same/name" }, { ...base, sourceIP: "", displayName: "" },
+    ] }, enabled: { deviceDetails: true }, topN: 10, timeRange: range, backendName: "test", locale: "en" });
+    const blob = await buildExportXlsxBlob(datasets, { ...range, endExclusive: true, backendName: "test", topN: 10, exportedAt: new Date() }, "en", true);
+    const files = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+    const workbook = strFromU8(files["xl/workbook.xml"]);
+    expect(workbook.match(/<sheet\b/g)).toHaveLength(3);
+    const names = [...workbook.matchAll(/<sheet\b[^>]*name="([^"]+)"/g)].map(match => match[1]);
+    expect(new Set(names).size).toBe(3);
+    expect(names.every(name => name.length <= 31 && !/[:\\/?*\[\]]/.test(name))).toBe(true);
+    const strings = strFromU8(files["xl/sharedStrings.xml"]);
+    expect(strings).toContain("ai-rules"); expect(strings).toContain("Matched Rule");
+    expect(strings).toContain("Unknown device");
+    const sheets = Object.keys(files).filter(name => /^xl\/worksheets\/sheet\d+\.xml$/.test(name));
+    expect(sheets.map(name => [...strFromU8(files[name]).matchAll(/<row\b[^>]*r="(\d+)"/g)].filter(match => Number(match[1]) > 4).length).sort()).toEqual([1, 1, 2]);
+  });
   it("stores Beijing wall-clock dates and formatted traffic units in real XLSX cells", async () => {
     const range = { start: "2026-10-18T02:00:00Z", end: "2026-10-19T02:00:00Z" };
     const datasets = buildExportDatasets({

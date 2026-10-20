@@ -44,6 +44,37 @@ describe('device traffic detail exports', () => {
     expect((await app.inject(url().replace(`backendId=${backendId}`, 'backendId=999999'))).statusCode).toBe(404);
   });
 
+  it('isolates unknown-source traffic and removes raw rules when clearing a backend', async () => {
+    const other = createTestBackend(db, 'Other');
+    db.batchUpdateTrafficStats(backendId, [base, { ...base, sourceIP: '' }]);
+    db.batchUpdateTrafficStats(other, [base]);
+    expect((await app.inject(`${url()}&sourceIP=`)).json().rows).toHaveLength(1);
+    expect((await app.inject(`${url()}&sourceIP=`)).json().rows[0].sourceIP).toBe('');
+    db.deleteBackendData(backendId);
+    expect((await app.inject(url())).json().rows).toEqual([]);
+    expect((await app.inject(url().replace(`backendId=${backendId}`, `backendId=${other}`))).json().rows[0]).toMatchObject({ matchedRule: 'Match' });
+  });
+
+  it.each([1, 24])('retains distinct matched rules and filters profiles, raw payloads and policy groups for %i hours', async hours => {
+    db.batchUpdateTrafficStats(backendId, [
+      { ...base, rule: 'RuleSet', rulePayload: 'ai', upload: 4 },
+      { ...base, rule: 'RuleSet', rulePayload: 'work', upload: 8 },
+      { ...base, sourceIP: '192.168.1.3', upload: 16 },
+    ]);
+    db.repos.device.saveProfile(backendId, { sourceIP: base.sourceIP, displayName: 'Laptop', groupName: 'Home' });
+    const all = (await app.inject(url(hours))).json().rows;
+    expect(all).toHaveLength(3);
+    expect(all.filter((r: { rule: string }) => r.rule === 'Group')).toHaveLength(3);
+    const filtered = (await app.inject(`${url(hours)}&groupName=Home&rule=work&domain=sample&policyGroup=Group`)).json().rows;
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]).toMatchObject({ matchedRule: 'RuleSet', rulePayload: 'work', totalUpload: 8 });
+    expect((await app.inject(`${url(hours)}&groupName=missing`)).json().rows).toEqual([]);
+    expect((await app.inject(`${url(hours)}&ungrouped=true`)).json().rows).toHaveLength(1);
+    const sorted = (await app.inject(`${url(hours)}&sortBy=totalUpload&sortOrder=desc`)).json().rows;
+    expect(sorted.map((row: { totalUpload: number }) => row.totalUpload)).toEqual([16, 8, 4]);
+    expect((await app.inject(`${url(hours)}&rule=%25`)).json().rows).toEqual([]);
+  });
+
   it('uses ClickHouse details and only falls back when allowed', async () => {
     const reader = (app.statsService as any).clickHouseReader;
     vi.spyOn(reader, 'shouldUse').mockReturnValue(true);

@@ -17,13 +17,13 @@ const clients: QueryClient[] = [];
 
 afterEach(() => { clients.forEach((client) => client.clear()); clients.length = 0; vi.clearAllMocks(); });
 
-function setup(enabled: UseExportSourcesParams["enabled"]) {
+function setup(enabled: UseExportSourcesParams["enabled"], extra: Partial<UseExportSourcesParams> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   clients.push(client);
   return { client, render: () => {
     let result: UseExportSourcesResult | undefined;
     function Probe() {
-      result = useExportSources({ backendId: 1, timeRange: range, topN: 10, enabled });
+      result = useExportSources({ backendId: 1, timeRange: range, topN: 10, enabled, ...extra });
       return null;
     }
     renderToString(<QueryClientProvider client={client}><Probe /></QueryClientProvider>);
@@ -32,6 +32,17 @@ function setup(enabled: UseExportSourcesParams["enabled"]) {
 }
 
 describe("selected export queries", () => {
+  it("derives scoped device usage from filtered facts without fetching global device totals", async () => {
+    const filters = { groupName: "Home" };
+    const { client, render } = setup({ ...disabled, devices: true }, { scoped: true, deviceFilters: filters });
+    const row = { sourceIP: "192.168.1.2", domain: "sample.test", ip: "203.0.113.1", rule: "Group", chain: "Node > Group", totalUpload: 12, totalDownload: 34, totalConnections: 1, lastSeen: range.start };
+    vi.mocked(api.getDeviceTrafficDetails).mockResolvedValue({ rows: [row, row], hasMore: false });
+    await render().refetch();
+    expect(api.getDevices).not.toHaveBeenCalled();
+    expect(api.getDeviceTrafficDetails).toHaveBeenCalledWith(1, range, 0, 1000, filters);
+    expect(client.getQueryData(getDeviceTrafficDetailsQueryKey(1, range, filters))).toHaveLength(2);
+    expect(render().sources.devices[0]).toMatchObject({ totalUpload: 24, totalDownload: 68, totalConnections: 2 });
+  });
   it("blocks export while a selected dataset has not loaded", () => {
     expect(setup({ ...disabled, domains: true }).render().isLoading).toBe(true);
   });
@@ -70,8 +81,8 @@ describe("selected export queries", () => {
     vi.mocked(api.getDeviceTrafficDetails).mockResolvedValueOnce({ rows: [], hasMore: true }).mockRejectedValueOnce(new Error("second page failed"));
     const result = await render().refetch();
     expect(result).toBeUndefined();
-    expect(api.getDeviceTrafficDetails).toHaveBeenNthCalledWith(1, 1, range, 0);
-    expect(api.getDeviceTrafficDetails).toHaveBeenNthCalledWith(2, 1, range, 1000);
+    expect(api.getDeviceTrafficDetails).toHaveBeenNthCalledWith(1, 1, range, 0, 1000, undefined);
+    expect(api.getDeviceTrafficDetails).toHaveBeenNthCalledWith(2, 1, range, 1000, 1000, undefined);
     const state = client.getQueryState(getDeviceTrafficDetailsQueryKey(1, range));
     expect(state?.error?.message).toBe("second page failed");
     expect(state?.data).toBeUndefined();

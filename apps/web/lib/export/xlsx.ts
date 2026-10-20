@@ -28,12 +28,13 @@ function buildSheet(
   meta: ExportFileMeta,
   locale: string,
   usedNames: Set<string>,
+  sheetLabel = getDatasetLabel(dataset, locale),
 ): Sheet<Blob> {
   const data: SheetData = [];
 
   data.push([
     {
-      value: `${getDatasetLabel(dataset, locale)} · ${meta.backendName}`,
+      value: `${sheetLabel} · ${meta.backendName}`,
       fontWeight: "bold",
       fontSize: 12,
       columnSpan: Math.max(dataset.columns.length, 2),
@@ -104,7 +105,7 @@ function buildSheet(
 
   return {
     data,
-    sheet: toSheetName(getDatasetLabel(dataset, locale), dataset.id, usedNames),
+    sheet: toSheetName(sheetLabel, dataset.id, usedNames),
     columns: widths,
     stickyRowsCount: 4,
   };
@@ -114,11 +115,23 @@ export async function buildExportXlsxBlob(
   datasets: ExportDataset[],
   meta: ExportFileMeta,
   locale: string,
+  splitDeviceSheets = false,
 ): Promise<Blob> {
   const usedNames = new Set<string>();
-  const sheets = datasets.map((dataset) =>
-    buildSheet(dataset, meta, locale, usedNames),
-  );
+  const sheets = datasets.flatMap((dataset) => {
+    if (!splitDeviceSheets || dataset.id !== "deviceDetails" || !dataset.rows.length) return [buildSheet(dataset, meta, locale, usedNames)];
+    const groups = new Map<string, typeof dataset.rows>();
+    for (const row of dataset.rows) {
+      const ip = String(row.sourceIP ?? "");
+      if (!groups.has(ip)) groups.set(ip, []);
+      groups.get(ip)!.push(row);
+    }
+    return [...groups].map(([ip, rows]) => {
+      const displayName = String(rows[0].displayName ?? "");
+      const label = displayName ? `${displayName} (${ip})` : ip || (locale.startsWith("zh") ? "未知设备" : "Unknown device");
+      return buildSheet({ ...dataset, rows }, meta, locale, usedNames, label);
+    });
+  });
   // Loaded on demand so the xlsx writer (~1.8 MB) stays out of the dashboard bundle.
   const { default: writeXlsxFile } = await import("write-excel-file/browser");
   return writeXlsxFile(sheets, { fontFamily: "Calibri", fontSize: 11 }).toBlob();

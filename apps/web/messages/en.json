@@ -591,6 +591,10 @@
     }
   },
   "export": {
+    "deviceScope": "Device export scope",
+    "deviceScopeHint": "Selecting a device or group limits exports to its device usage and traffic details. Global datasets are disabled to avoid including network-wide totals.",
+    "splitSheets": "Excel details: one worksheet per device",
+    "preferencesHint": "Format, datasets, Top N, device scope and worksheet settings are remembered per gateway in this browser.",
     "timeZoneHint": "All times use China Standard Time (UTC+08:00). Filenames use the selected range; file contents state the actual statistics range.",
     "selectedRange": "Selected range: {start} ~ {end}",
     "hourAlignmentHint": "This export uses complete hours. Both boundaries round down to the hour; the unfinished hour remains for the next export.",
@@ -632,6 +636,8 @@
           "description": "Download, upload and connections per proxy node"
         },
         "deviceDetails": {
+    "overviewTab": "Device overview",
+    "detailsTab": "Traffic details",
           "label": "Device traffic details",
           "description": "All device/domain/IP/rule/policy/chain traffic rows, independent of Top N"
         },
@@ -641,7 +647,7 @@
         }
       }
     },
-    "deviceDetailsHint": "Details are grouped by device, domain, destination IP, statistics rule and chain, including IP-only traffic. For multi-hop connections the statistics rule is the top-level policy group; historical raw matched rules were not stored. Exports contain persisted, retained data only, up to 100,000 rows; shorten the range if exceeded.",
+    "deviceDetailsHint": "Details group traffic by device, domain, IP, statistics rule, raw matched rule and payload, and chain, including IP-only visits. Raw rules are retained after this upgrade; historical fields are empty. Exports include persisted, retained data only, up to 100,000 rows; shorten the range or select one device if exceeded.",
     "detailLimit": "Device details exceed 100,000 rows. Please shorten the export range.",
     "topN": {
       "label": "Top N",
@@ -745,6 +751,10 @@
     "domainCount": "{count, plural, one {# domain} other {# domains}} · up to 10"
   },
   "entityTrend": {
+    "metric": "Traffic direction",
+    "toggleDevice": "Show or hide {device}",
+    "showAll": "Show all",
+    "noVisible": "All device series are hidden. Use the legend or Show all to restore them.",
     "empty": "No saved traffic for this item in the selected period",
     "points": "{count} data points",
     "total": "Total traffic",
@@ -768,7 +778,7 @@
     "unknownDevice": "Unknown device",
     "legend": "Device legend",
     "device": "Device",
-    "deviceHint": "Shows the top 10 devices by traffic over this range; remaining devices are combined. Records without a source IP appear as unknown.",
+    "deviceHint": "All-device mode shows the top 10 plus a combined remainder. Select any individual device or click legend items to show or hide curves.",
     "countryDeviceHint": "Device series use the current IP geolocation cache and may differ from saved country totals."
   },
   "deviceComparison": {
@@ -795,5 +805,58 @@
     "error": "Could not load domain comparisons. Please retry.",
     "noMatches": "No matching domains. Change the filter or clear the search.",
     "change": "Traffic change"
+  },
+  "deviceDetails": {
+    "overviewTab": "Device overview",
+    "detailsTab": "Traffic details",
+    "title": "Device traffic details",
+    "description": "Combine device, domain, matched-rule and policy-group filters. Uses persisted, complete buckets with the same boundaries as exports. Historical or unreported raw rules appear as not recorded.",
+    "actualRange": "Actual range: {start} ~ {end} (end exclusive)",
+    "scope": "Device scope",
+    "allDevices": "All devices",
+    "ungrouped": "Ungrouped devices",
+    "groups": "Device groups",
+    "devices": "Devices",
+    "catalogError": "Could not load the device list",
+    "retry": "Retry",
+    "domain": "Domain / destination IP",
+    "rule": "Statistics rule",
+    "policyGroup": "Policy group",
+    "domainPlaceholder": "Domain keyword",
+    "rulePlaceholder": "Statistics rule, matched rule or payload",
+    "policyGroupPlaceholder": "Top-level policy group name",
+    "sort": "Sort by",
+    "sortOrder": "Sort direction",
+    "descending": "Highest / newest first",
+    "ascending": "Lowest / oldest first",
+    "apply": "Search",
+    "reset": "Reset filters",
+    "noRange": "No gateway or complete time buckets are available.",
+    "error": "Could not load device details. Please retry.",
+    "loading": "Loading device details",
+    "empty": "No device traffic matches these filters.",
+    "device": "Device",
+    "matchedRule": "Matched rule",
+    "chain": "Full proxy chain",
+    "download": "Download",
+    "upload": "Upload",
+    "total": "Total traffic",
+    "connections": "Connections",
+    "lastSeen": "Last seen",
+    "unknownDevice": "Unknown device",
+    "ipOnly": "IP-only traffic",
+    "notRecorded": "Not recorded",
+    "page": "Page {page} · {count} rows on this page",
+    "previous": "Previous",
+    "next": "Next",
+    "sortOptions": {
+      "totalTraffic": "Total traffic",
+      "totalDownload": "Download",
+      "totalUpload": "Upload",
+      "totalConnections": "Connections",
+      "lastSeen": "Last seen",
+      "device": "Device IP",
+      "domain": "Domain"
+    }
   }
 }

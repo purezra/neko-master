@@ -364,6 +364,8 @@ export function buildExportDatasets(
         { key: "domain", label: { zh: "域名", en: "Domain" } },
         { key: "ip", label: { zh: "目标 IP", en: "Destination IP" } },
         { key: "rule", label: { zh: "统计规则", en: "Statistics Rule" } },
+        { key: "matchedRule", label: { zh: "原始命中规则", en: "Matched Rule" } },
+        { key: "rulePayload", label: { zh: "规则参数", en: "Rule Payload" } },
         { key: "policyGroup", label: { zh: "策略组", en: "Policy Group" } },
         { key: "proxy", label: { zh: "出口代理", en: "Outbound Proxy" } },
         { key: "chain", label: { zh: "完整代理链", en: "Full Proxy Chain" } },
@@ -373,7 +375,7 @@ export function buildExportDatasets(
       rows: (sources.deviceDetails ?? []).map(item => {
         const hops = item.chain.split(" > ").map(hop => hop.trim()).filter(Boolean);
         return { sourceIP: item.sourceIP, displayName: item.displayName ?? "", groupName: item.groupName ?? "",
-          domain: item.domain, ip: item.ip, rule: item.rule,
+          domain: item.domain, ip: item.ip, rule: item.rule, matchedRule: item.matchedRule ?? "", rulePayload: item.rulePayload ?? "",
           policyGroup: hops.length > 1 ? hops[hops.length - 1] : "", proxy: hops[0] ?? "", chain: item.chain,
           totalBytes: totalOf(item), downloadBytes: item.totalDownload, uploadBytes: item.totalUpload,
           connections: item.totalConnections, lastSeen: item.lastSeen ? parseApiTimestamp(item.lastSeen) : null };

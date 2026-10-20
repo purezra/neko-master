@@ -14,6 +14,7 @@ import type {
   TrafficEntityDimension,
   EntityDailyTrend,
   DeviceTrafficDetailPage,
+  DeviceTrafficFilters,
   DeviceDomainComparison,
   DeviceDomainComparisonOptions,
 } from "@neko-master/shared";
@@ -245,10 +246,10 @@ function buildUrl(base: string, params: Record<string, string | number | boolean
 export const api = {
   getDeviceDomainComparison: (backendId: number, sourceIP: string, current: ComparisonRange, baseline: ComparisonRange, options: DeviceDomainComparisonOptions) =>
     fetchJson<DeviceDomainComparison>(buildUrl(`${API_BASE}/stats/comparison/device-domains`, { backendId, sourceIP, start: current.start, end: current.end, baselineStart: baseline.start, baselineEnd: baseline.end, ...options })),
-  getEntityDailyTrend: (backendId: number, dimension: TrafficEntityDimension, value: string, range: TimeRange, includeDevices = false) =>
-    fetchJson<EntityDailyTrend>(buildUrl(`${API_BASE}/stats/trend/entity-daily`, { backendId, dimension, value, start: range.start, end: range.end, includeDevices })),
-  getDeviceTrafficDetails: (backendId: number, range: TimeRange, offset: number, limit = 1000) =>
-    fetchJson<DeviceTrafficDetailPage>(buildUrl(`${API_BASE}/stats/devices/traffic-details`, { backendId, ...range, offset, limit })),
+  getEntityDailyTrend: (backendId: number, dimension: TrafficEntityDimension, value: string, range: TimeRange, includeDevices = false, sourceIP?: string) =>
+    fetchJson<EntityDailyTrend>(buildUrl(`${API_BASE}/stats/trend/entity-daily`, { backendId, dimension, value, start: range.start, end: range.end, includeDevices, sourceIP }) + (sourceIP === "" ? "&sourceIP=" : "")),
+  getDeviceTrafficDetails: (backendId: number, range: TimeRange, offset: number, limit = 1000, filters: DeviceTrafficFilters = {}) =>
+    fetchJson<DeviceTrafficDetailPage>(buildUrl(`${API_BASE}/stats/devices/traffic-details`, { backendId, ...range, offset, limit, ...filters }) + (filters.sourceIP === "" ? "&sourceIP=" : "")),
   getDeviceProfiles: (backendId: number) => fetchJson<DeviceProfile[]>(buildUrl(`${API_BASE}/stats/devices/profiles`, { backendId })),
   saveDeviceProfile: (backendId: number, profile: DeviceProfile) => fetchJson<DeviceProfile>(buildUrl(`${API_BASE}/stats/devices/profiles`, { backendId }), "PUT", profile),
   getTrafficComparison: (backendId: number, current: ComparisonRange, baseline: ComparisonRange) =>

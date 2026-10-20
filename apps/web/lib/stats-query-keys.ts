@@ -1,16 +1,16 @@
 import type { TimeRange } from "@/lib/api";
-import type { ComparisonRange, TrafficEntityDimension, DeviceDomainComparisonOptions } from "@neko-master/shared";
+import type { ComparisonRange, TrafficEntityDimension, DeviceDomainComparisonOptions, DeviceTrafficFilters } from "@neko-master/shared";
 
 export function getDeviceDomainComparisonQueryKey(backendId: number, sourceIP: string, current: ComparisonRange, baseline: ComparisonRange, options: DeviceDomainComparisonOptions) {
   return ["stats", "device-domain-comparison", { backendId, sourceIP, current, baseline, ...options }] as const;
 }
 
-export function getEntityDailyTrendQueryKey(backendId: number, dimension: TrafficEntityDimension, value: string, range: TimeRange, includeDevices = false) {
-  return ["stats", "entity-daily-trend", { backendId, dimension, value, start: range.start, end: range.end, includeDevices }] as const;
+export function getEntityDailyTrendQueryKey(backendId: number, dimension: TrafficEntityDimension, value: string, range: TimeRange, includeDevices = false, sourceIP?: string) {
+  return ["stats", "entity-daily-trend", { backendId, dimension, value, start: range.start, end: range.end, includeDevices, sourceIP }] as const;
 }
 
-export function getDeviceTrafficDetailsQueryKey(backendId?: number, range?: TimeRange) {
-  return ["stats", "device-traffic-details", { backendId: backendId ?? null, ...range }] as const;
+export function getDeviceTrafficDetailsQueryKey(backendId?: number, range?: TimeRange, filters?: DeviceTrafficFilters, offset?: number, limit?: number) {
+  return ["stats", "device-traffic-details", { backendId: backendId ?? null, ...range, filters, offset, limit }] as const;
 }
 
 export function getDeviceProfilesQueryKey(backendId?: number) {

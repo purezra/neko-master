@@ -60,11 +60,11 @@ export class TrafficWriterRepository extends BaseRepository {
     const minuteMap = new Map<string, { upload: number; download: number; connections: number }>();
     const minuteDimMap = new Map<string, {
       minute: string; domain: string; ip: string; sourceIP: string;
-      chain: string; rule: string; upload: number; download: number; connections: number;
+      chain: string; rule: string; matchedRule: string; rulePayload: string; upload: number; download: number; connections: number;
     }>();
     const hourlyDimMap = new Map<string, {
       hour: string; domain: string; ip: string; sourceIP: string;
-      chain: string; rule: string; upload: number; download: number; connections: number;
+      chain: string; rule: string; matchedRule: string; rulePayload: string; upload: number; download: number; connections: number;
     }>();
     const domainProxyMap = new Map<string, { domain: string; chain: string; upload: number; download: number; count: number }>();
     const ipProxyMap = new Map<string, { ip: string; chain: string; upload: number; download: number; count: number; domains: Set<string> }>();
@@ -232,7 +232,7 @@ export class TrafficWriterRepository extends BaseRepository {
       }
 
       // Aggregate minute_dim_stats
-      const dimKey = `${minuteKey}:${update.domain || ''}:${update.ip || ''}:${update.sourceIP || ''}:${fullChain}:${ruleName}`;
+      const dimKey = JSON.stringify([minuteKey, update.domain, update.ip, update.sourceIP, fullChain, ruleName, update.rule, update.rulePayload]);
       const existingDim = minuteDimMap.get(dimKey);
       if (existingDim) {
         existingDim.upload += update.upload;
@@ -246,6 +246,8 @@ export class TrafficWriterRepository extends BaseRepository {
           sourceIP: update.sourceIP || '',
           chain: fullChain,
           rule: ruleName,
+          matchedRule: update.rule.trim(),
+          rulePayload: update.rulePayload.trim(),
           upload: update.upload,
           download: update.download,
           connections,
@@ -253,7 +255,7 @@ export class TrafficWriterRepository extends BaseRepository {
       }
 
       // Aggregate hourly_dim_stats
-      const hourlyDimKey = `${hourKey}:${update.domain || ''}:${update.ip || ''}:${update.sourceIP || ''}:${fullChain}:${ruleName}`;
+      const hourlyDimKey = JSON.stringify([hourKey, update.domain, update.ip, update.sourceIP, fullChain, ruleName, update.rule, update.rulePayload]);
       const existingHourlyDim = hourlyDimMap.get(hourlyDimKey);
       if (existingHourlyDim) {
         existingHourlyDim.upload += update.upload;
@@ -267,6 +269,8 @@ export class TrafficWriterRepository extends BaseRepository {
           sourceIP: update.sourceIP || '',
           chain: fullChain,
           rule: ruleName,
+          matchedRule: update.rule.trim(),
+          rulePayload: update.rulePayload.trim(),
           upload: update.upload,
           download: update.download,
           connections,
@@ -486,20 +490,20 @@ export class TrafficWriterRepository extends BaseRepository {
         for (const [, data] of ruleIPMap) { ruleIPStmt.run({ backendId, rule: data.rule, ip: data.ip, upload: data.upload, download: data.download, count: data.count, timestamp }); }
 
         const minuteDimStmt = this.db.prepare(`
-          INSERT INTO minute_dim_stats (backend_id, minute, domain, ip, source_ip, chain, rule, upload, download, connections)
-          VALUES (@backendId, @minute, @domain, @ip, @sourceIP, @chain, @rule, @upload, @download, @connections)
-          ON CONFLICT(backend_id, minute, domain, ip, source_ip, chain, rule) DO UPDATE SET
+          INSERT INTO minute_dim_stats (backend_id, minute, domain, ip, source_ip, chain, rule, matched_rule, rule_payload, upload, download, connections)
+          VALUES (@backendId, @minute, @domain, @ip, @sourceIP, @chain, @rule, @matchedRule, @rulePayload, @upload, @download, @connections)
+          ON CONFLICT(backend_id, minute, domain, ip, source_ip, chain, rule, matched_rule, rule_payload) DO UPDATE SET
             upload = upload + @upload, download = download + @download, connections = connections + @connections
         `);
-        for (const [, data] of minuteDimMap) { minuteDimStmt.run({ backendId, minute: data.minute, domain: data.domain, ip: data.ip, sourceIP: data.sourceIP, chain: data.chain, rule: data.rule, upload: data.upload, download: data.download, connections: data.connections }); }
+        for (const [, data] of minuteDimMap) { minuteDimStmt.run({ backendId, minute: data.minute, domain: data.domain, ip: data.ip, sourceIP: data.sourceIP, chain: data.chain, rule: data.rule, matchedRule: data.matchedRule, rulePayload: data.rulePayload, upload: data.upload, download: data.download, connections: data.connections }); }
 
         const hourlyDimStmt = this.db.prepare(`
-          INSERT INTO hourly_dim_stats (backend_id, hour, domain, ip, source_ip, chain, rule, upload, download, connections)
-          VALUES (@backendId, @hour, @domain, @ip, @sourceIP, @chain, @rule, @upload, @download, @connections)
-          ON CONFLICT(backend_id, hour, domain, ip, source_ip, chain, rule) DO UPDATE SET
+          INSERT INTO hourly_dim_stats (backend_id, hour, domain, ip, source_ip, chain, rule, matched_rule, rule_payload, upload, download, connections)
+          VALUES (@backendId, @hour, @domain, @ip, @sourceIP, @chain, @rule, @matchedRule, @rulePayload, @upload, @download, @connections)
+          ON CONFLICT(backend_id, hour, domain, ip, source_ip, chain, rule, matched_rule, rule_payload) DO UPDATE SET
             upload = upload + @upload, download = download + @download, connections = connections + @connections
         `);
-        for (const [, data] of hourlyDimMap) { hourlyDimStmt.run({ backendId, hour: data.hour, domain: data.domain, ip: data.ip, sourceIP: data.sourceIP, chain: data.chain, rule: data.rule, upload: data.upload, download: data.download, connections: data.connections }); }
+        for (const [, data] of hourlyDimMap) { hourlyDimStmt.run({ backendId, hour: data.hour, domain: data.domain, ip: data.ip, sourceIP: data.sourceIP, chain: data.chain, rule: data.rule, matchedRule: data.matchedRule, rulePayload: data.rulePayload, upload: data.upload, download: data.download, connections: data.connections }); }
 
         const domainProxyStmt = this.db.prepare(`
           INSERT INTO domain_proxy_stats (backend_id, domain, chain, total_upload, total_download, total_connections, last_seen)

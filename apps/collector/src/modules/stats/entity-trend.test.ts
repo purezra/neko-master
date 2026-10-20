@@ -91,6 +91,16 @@ describe('entity daily traffic trends', () => {
     expect(country.devices[0].points[0]).toMatchObject({ upload: 10, download: 30 });
   });
 
+  it('can isolate a requested device outside the overall top ten', async () => {
+    db.batchUpdateTrafficStats(backendId, Array.from({ length: 14 }, (_, i) => ({ ...base, sourceIP: `192.168.1.${i + 1}`, upload: i + 1, timestampMs: start })));
+    const all = (await app.inject(`${url('domain', base.domain)}&includeDevices=true`)).json();
+    expect(all.devices.some((device: { sourceIP: string }) => device.sourceIP === '192.168.1.1')).toBe(false);
+    const selected = (await app.inject(`${url('domain', base.domain)}&includeDevices=true&sourceIP=192.168.1.1`)).json();
+    expect(selected.devices).toHaveLength(1);
+    expect(selected.devices[0]).toMatchObject({ sourceIP: '192.168.1.1' });
+    expect(selected.devices[0].points[0]).toMatchObject({ upload: 1, download: 30 });
+  });
+
   it('routes device series through ClickHouse and obeys strict fallback', async () => {
     const reader = (app.statsService as any).clickHouseReader;
     vi.spyOn(reader, 'shouldUse').mockReturnValue(true);

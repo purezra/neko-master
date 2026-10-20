@@ -8,6 +8,12 @@ afterEach(() => vi.unstubAllEnvs());
 const meta = { backendName: "OpenClash 网关", start: "2026-10-18T02:00:00Z", end: "2026-10-19T02:00:00Z", endExclusive: true, topN: 50, exportedAt: new Date("2026-10-19T02:02:31.123Z") };
 
 describe("export presentation", () => {
+  it("distinguishes device and group exports in filenames and JSON scope metadata", () => {
+    expect(getExportFileName("json", { ...meta, deviceScope: "ip:192.168.1.2" })).toContain("ip_192.168.1.2");
+    expect(getExportFileName("xlsx", { ...meta, deviceScope: "group:Home/Office" })).toContain("group_Home_Office");
+    expect(getExportFileName("json", { ...meta, deviceScope: "all" })).toBe(getExportFileName("json", meta));
+    expect(buildExportJsonPayload([], { ...meta, deviceScope: "group:Home" }, "en").meta.deviceScope).toBe("group:Home");
+  });
   it.each(["UTC", "Asia/Shanghai", "America/New_York"])("uses Beijing time independent of the host zone %s", zone => {
     vi.stubEnv("TZ", zone);
     expect(formatExportTimestamp(meta.start)).toBe("2026-10-18T10:00:00.000+08:00");

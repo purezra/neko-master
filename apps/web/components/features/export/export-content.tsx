@@ -50,19 +50,11 @@ import { buildExportXlsxBlob } from "@/lib/export/xlsx";
 import { useExportHistory } from "@/lib/export/history";
 import { getExportContinuationRange, getExportWindow } from "@/lib/export/range";
 import { useExportSources } from "./use-export-sources";
-
-const ALL_DATASETS: Record<ExportDatasetId, true> = {
-  summary: true,
-  domains: true,
-  ips: true,
-  rules: true,
-  countries: true,
-  proxies: true,
-  devices: true,
-  deviceDetails: true,
-};
-
-const ALL_DATASETS_SELECTED: Record<ExportDatasetId, boolean> = { ...ALL_DATASETS };
+import { useExportPreferences } from "@/lib/export/preferences";
+import { deviceScopeFilters } from "@/lib/device-traffic";
+import { DeviceScopeSelect } from "@/components/features/devices/device-scope-select";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 const DATASET_ICONS: Record<ExportDatasetId, typeof FileText> = {
   summary: FileText,
@@ -106,10 +98,13 @@ export function ExportContent({
 }: ExportContentProps) {
   const t = useTranslations("export");
   const locale = useLocale();
-  const [selected, setSelected] =
-    useState<Record<ExportDatasetId, boolean>>(ALL_DATASETS_SELECTED);
-  const [topN, setTopN] = useState<ExportTopN>(50);
-  const [format, setFormat] = useState<ExportFormat>("json");
+  const { preferences, update } = useExportPreferences(activeBackendId);
+  const { topN, format, scope, splitSheets } = preferences;
+  const scoped = scope !== "all";
+  const selected = useMemo(() => Object.fromEntries(EXPORT_DATASET_IDS.map(id => [id,
+    preferences.selected[id] && (!scoped || id === "devices" || id === "deviceDetails")])) as Record<ExportDatasetId, boolean>, [preferences.selected, scoped]);
+  const allowedIds = EXPORT_DATASET_IDS.filter(id => !scoped || id === "devices" || id === "deviceDetails");
+  const deviceFilters = useMemo(() => deviceScopeFilters(scope), [scope]);
   const [isExporting, setIsExporting] = useState(false);
   const [historyDismissed, setHistoryDismissed] = useState(false);
   const { latest: lastExport, record: recordExport } = useExportHistory(
@@ -117,7 +112,7 @@ export function ExportContent({
   );
 
   const selectedCount = EXPORT_DATASET_IDS.filter((id) => selected[id]).length;
-  const allSelected = selectedCount === EXPORT_DATASET_IDS.length;
+  const allSelected = selectedCount === allowedIds.length;
   const noneSelected = selectedCount === 0;
   const exportWindow = useMemo(() => getExportWindow(timeRange), [timeRange]);
   const exportRange = exportWindow?.range;
@@ -134,6 +129,8 @@ export function ExportContent({
     timeRange: exportWindow?.queryRange,
     topN,
     enabled: selected,
+    deviceFilters: scoped ? deviceFilters : undefined,
+    scoped,
   });
 
   const datasets = useMemo(
@@ -158,17 +155,12 @@ export function ExportContent({
   }, [datasets]);
 
   const toggleDataset = (id: ExportDatasetId) => {
-    setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
+    if (allowedIds.includes(id)) update({ selected: { ...selected, [id]: !selected[id] } });
   };
 
   const toggleAll = () => {
     const next = !allSelected;
-    setSelected(
-      EXPORT_DATASET_IDS.reduce(
-        (acc, id) => ({ ...acc, [id]: next }),
-        {} as Record<ExportDatasetId, boolean>,
-      ),
-    );
+    update({ selected: Object.fromEntries(EXPORT_DATASET_IDS.map(id => [id, allowedIds.includes(id) && next])) as Record<ExportDatasetId, boolean> });
   };
 
   const handleExport = async () => {
@@ -184,6 +176,7 @@ export function ExportContent({
       requestedRange: { ...timeRange },
       topN,
       exportedAt: new Date(),
+      deviceScope: scope,
     };
     const filename = getExportFileName(format, meta);
     setIsExporting(true);
@@ -198,7 +191,7 @@ export function ExportContent({
         const csv = buildExportCsv(datasets, meta, locale);
         downloadBlob(filename, new Blob([csv], { type: "text/csv;charset=utf-8" }));
       } else {
-        const blob = await buildExportXlsxBlob(datasets, meta, locale);
+        const blob = await buildExportXlsxBlob(datasets, meta, locale, splitSheets);
         downloadBlob(filename, blob);
       }
       recordExport({
@@ -345,6 +338,7 @@ export function ExportContent({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2"><Label>{t("deviceScope")}</Label><DeviceScopeSelect backendId={activeBackendId} range={exportWindow?.queryRange} value={scope} onChange={value => update({ scope: value })} /><p className="text-xs leading-relaxed text-muted-foreground">{t("deviceScopeHint")}</p></div>
             {selected.deviceDetails && <p className="text-xs leading-relaxed text-muted-foreground">{t("deviceDetailsHint")}</p>}
             <div className="grid gap-2 sm:grid-cols-2">
               {EXPORT_DATASET_IDS.map((id) => {
@@ -356,9 +350,10 @@ export function ExportContent({
                     type="button"
                     role="checkbox"
                     aria-checked={checked}
+                    disabled={!allowedIds.includes(id)}
                     onClick={() => toggleDataset(id)}
                     className={cn(
-                      "group flex items-start gap-3 rounded-xl border p-3 text-left transition-all",
+                      "group flex items-start gap-3 rounded-xl border p-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-40",
                       checked
                         ? "border-primary/40 bg-primary/5"
                         : "border-border/60 bg-secondary/30 hover:border-border hover:bg-secondary/50",
@@ -400,7 +395,7 @@ export function ExportContent({
                 </span>
                 <Tabs
                   value={String(topN)}
-                  onValueChange={(value) => setTopN(Number(value) as ExportTopN)}>
+                  onValueChange={(value) => update({ topN: Number(value) as ExportTopN })}>
                   <TabsList className="h-auto min-h-8 max-w-full flex-wrap">
                     {EXPORT_TOP_N_OPTIONS.map((option) => (
                       <TabsTrigger
@@ -437,7 +432,7 @@ export function ExportContent({
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setFormat(option.value)}
+                    onClick={() => update({ format: option.value })}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all",
                       active
@@ -465,6 +460,8 @@ export function ExportContent({
               })}
             </div>
 
+            {format === "xlsx" && <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"><Label htmlFor="split-device-sheets" className="text-xs leading-relaxed">{t("splitSheets")}</Label><Switch id="split-device-sheets" checked={splitSheets} onCheckedChange={checked => update({ splitSheets: checked })} /></div>}
+            <p className="text-xs text-muted-foreground">{t("preferencesHint")}</p>
             <div className="rounded-xl bg-secondary/40 p-3 text-xs text-muted-foreground">
               {t("summaryLine", {
                 datasets: selectedCount,

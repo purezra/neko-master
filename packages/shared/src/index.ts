@@ -397,10 +397,23 @@ export interface DeviceTrafficDetail {
   ip: string;
   rule: string;
   chain: string;
+  /** Empty for historical rows or gateways that did not report a rule. */
+  matchedRule?: string;
+  rulePayload?: string;
   totalUpload: number;
   totalDownload: number;
   totalConnections: number;
   lastSeen: string;
+}
+export interface DeviceTrafficFilters {
+  sourceIP?: string;
+  groupName?: string;
+  ungrouped?: boolean;
+  domain?: string;
+  rule?: string;
+  policyGroup?: string;
+  sortBy?: 'device' | 'domain' | 'totalTraffic' | 'totalUpload' | 'totalDownload' | 'totalConnections' | 'lastSeen';
+  sortOrder?: 'asc' | 'desc';
 }
 export interface DeviceTrafficDetailPage {
   rows: DeviceTrafficDetail[];

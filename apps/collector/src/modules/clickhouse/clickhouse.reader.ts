@@ -14,6 +14,7 @@ import type {
   DeviceDomainComparisonPage,
 } from '@neko-master/shared';
 import { loadClickHouseConfig } from './clickhouse.config.js';
+import { deviceTrafficOrder, type ResolvedDeviceTrafficFilters } from '../stats/device-traffic-filter.js';
 
 type StatsQuerySource = 'sqlite' | 'clickhouse' | 'auto';
 
@@ -59,19 +60,32 @@ export type ClickHouseSummary = {
 };
 
 export class ClickHouseReader {
-  async getDeviceTrafficDetails(backendId: number, start: string, end: string, offset: number, limit: number): Promise<DeviceTrafficDetail[] | null> {
+  async getDeviceTrafficDetails(backendId: number, start: string, end: string, offset: number, limit: number, filters: ResolvedDeviceTrafficFilters = {}): Promise<DeviceTrafficDetail[] | null> {
+    const where: string[] = [];
+    if (filters.sourceIP !== undefined) where.push(`source_ip = '${this.esc(filters.sourceIP)}'`);
+    for (const [key, column] of [['domain', "concat(domain, ' ', ip)"], ['rule', "concat(rule, ' ', matched_rule, ' ', rule_payload)"],
+      ['policyGroup', "if(position(chain, ' > ') > 0, rule, '')"]] as const) {
+      if (filters[key]) where.push(`positionCaseInsensitiveUTF8(${column}, '${this.esc(filters[key])}') > 0`);
+    }
+    for (const [kind, ips] of [['include', filters.includeIPs], ['exclude', filters.excludeIPs]] as const) {
+      if (ips === undefined) continue;
+      if (!ips.length) { if (kind === 'include') where.push('0=1'); continue; }
+      where.push(`source_ip ${kind === 'exclude' ? 'NOT IN' : 'IN'} (${ips.map(ip => `'${this.esc(ip)}'`).join(',')})`);
+    }
     const rows = await this.query<Record<string, unknown>>(`SELECT source_ip AS sourceIP, domain, ip, rule, chain,
+      matched_rule AS matchedRule, rule_payload AS rulePayload,
       SUM(upload) AS totalUpload, SUM(download) AS totalDownload, SUM(connections) AS totalConnections,
       toString(max(minute)) AS lastSeen FROM ${this.config.database}.traffic_detail_buffer
       WHERE backend_id = ${backendId} AND minute >= toDateTime('${this.toDateTime(start)}')
-      AND minute <= toDateTime('${this.toDateTime(end)}') GROUP BY source_ip, domain, ip, rule, chain
-      ORDER BY source_ip, domain, ip, rule, chain LIMIT ${limit} OFFSET ${offset}`);
+      AND minute <= toDateTime('${this.toDateTime(end)}') ${where.map(clause => `AND ${clause}`).join(' ')}
+      GROUP BY source_ip, domain, ip, rule, chain, matched_rule, rule_payload
+      ORDER BY ${deviceTrafficOrder(filters)} LIMIT ${limit} OFFSET ${offset}`);
     return rows?.map(row => ({ sourceIP: String(row.sourceIP), domain: String(row.domain), ip: String(row.ip),
-      rule: String(row.rule), chain: String(row.chain), lastSeen: String(row.lastSeen), totalUpload: Number(row.totalUpload),
+      rule: String(row.rule), chain: String(row.chain), matchedRule: String(row.matchedRule ?? ''), rulePayload: String(row.rulePayload ?? ''), lastSeen: String(row.lastSeen), totalUpload: Number(row.totalUpload),
       totalDownload: Number(row.totalDownload), totalConnections: Number(row.totalConnections) })) ?? null;
   }
 
-  async getEntityDeviceDailyTotals(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string, countryIPs: string[] = []): Promise<DeviceDailyTrafficTotals[] | null> {
+  async getEntityDeviceDailyTotals(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string, countryIPs: string[] = [], sourceIP?: string): Promise<DeviceDailyTrafficTotals[] | null> {
     const filter = dimension === 'country'
       ? countryIPs.length ? `ip ${value === 'UNKNOWN' ? 'NOT IN' : 'IN'} (${countryIPs.map(ip => `'${this.esc(ip)}'`).join(',')})` : value === 'UNKNOWN' ? '1=1' : '0=1'
       : `${dimension === 'proxy' ? "trimBoth(arrayElement(splitByString(' > ', chain), 1))" : 'domain'} = '${this.esc(value)}'`;
@@ -79,7 +93,7 @@ export class ClickHouseReader {
       SELECT intDiv(toInt64(toUnixTimestamp(minute)) - ${Date.parse(start) / 1000}, 86400) AS bucket,
         source_ip, SUM(upload) AS upload, SUM(download) AS download FROM ${this.config.database}.traffic_detail_buffer
       WHERE backend_id = ${backendId} AND minute >= toDateTime('${this.toDateTime(start)}')
-        AND minute < toDateTime('${this.toDateTime(end)}') AND ${filter} GROUP BY bucket, source_ip
+        AND minute < toDateTime('${this.toDateTime(end)}') AND ${filter} ${sourceIP === undefined ? '' : `AND source_ip = '${this.esc(sourceIP)}'`} GROUP BY bucket, source_ip
       ), top_devices AS (SELECT source_ip FROM daily GROUP BY source_ip ORDER BY SUM(upload + download) DESC, source_ip LIMIT 10)
       SELECT bucket, if(source_ip IN (SELECT source_ip FROM top_devices), toNullable(source_ip), NULL) AS sourceIP,
         SUM(upload) AS upload, SUM(download) AS download FROM daily GROUP BY bucket, sourceIP ORDER BY bucket, sourceIP`);

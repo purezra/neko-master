@@ -22,6 +22,8 @@ import type {
 } from './stats.types.js';
 import { ClickHouseReader } from '../clickhouse/clickhouse.reader.js';
 import { resolveComparisonRanges } from './comparison-range.js';
+import type { DeviceTrafficFilters } from '@neko-master/shared';
+import type { ResolvedDeviceTrafficFilters } from './device-traffic-filter.js';
 import type { DeviceDomainComparisonOptions, DeviceDomainComparison } from '@neko-master/shared';
 import type { ComparisonRange, DeviceProfile, TrafficComparison, TrafficComparisonRow, TrafficEntityDimension, EntityDailyTrend, DeviceTrafficDetailPage } from '@neko-master/shared';
 
@@ -38,15 +40,18 @@ interface PaginatedStatsOptions {
 type RoutedSource = 'clickhouse' | 'sqlite';
 
 export class StatsService {
-  async getDeviceTrafficDetailsWithRouting(backendId: number, start: string, end: string, offset: number, limit: number): Promise<DeviceTrafficDetailPage> {
+  async getDeviceTrafficDetailsWithRouting(backendId: number, start: string, end: string, offset: number, limit: number, filters: DeviceTrafficFilters = {}): Promise<DeviceTrafficDetailPage> {
+    const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile]));
+    const resolved: ResolvedDeviceTrafficFilters = { ...filters };
+    if (filters.groupName !== undefined) resolved.includeIPs = [...profiles.values()].filter(profile => profile.groupName === filters.groupName).map(profile => profile.sourceIP);
+    if (filters.ungrouped) resolved.excludeIPs = [...profiles.values()].filter(profile => profile.groupName).map(profile => profile.sourceIP);
     let rows = this.clickHouseReader.shouldUseForRange(start, end)
-      ? await this.clickHouseReader.getDeviceTrafficDetails(backendId, start, end, offset, limit + 1) : null;
+      ? await this.clickHouseReader.getDeviceTrafficDetails(backendId, start, end, offset, limit + 1, resolved) : null;
     if (rows === null) {
       this.failIfStrictFallback('device-traffic-details');
       this.recordRoute('device-traffic-details', 'sqlite');
-      rows = this.db.repos.device.getTrafficDetails(backendId, start, end, offset, limit + 1);
+      rows = this.db.repos.device.getTrafficDetails(backendId, start, end, offset, limit + 1, resolved);
     } else this.recordRoute('device-traffic-details', 'clickhouse');
-    const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile]));
     return { hasMore: rows.length > limit, rows: rows.slice(0, limit).map(row => ({ ...row, ...profiles.get(row.sourceIP) })) };
   }
 
@@ -67,7 +72,7 @@ export class StatsService {
     return { ...result, device: profile ?? { sourceIP, displayName: '', groupName: '' }, currentRange, baselineRange };
   }
 
-  async getEntityDailyTrendWithRouting(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string, includeDevices = false): Promise<EntityDailyTrend> {
+  async getEntityDailyTrendWithRouting(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string, includeDevices = false, sourceIP?: string): Promise<EntityDailyTrend> {
     if (!this.db.getBackend(backendId)) throw new Error('Backend not found');
     const from = Date.parse(start), to = Date.parse(end);
     const day = 86400000;
@@ -87,11 +92,11 @@ export class StatsService {
     if (includeDevices) {
       const countryIPs = dimension === 'country' ? this.db.repos.country.getCachedIPs(value) : [];
       let deviceRows = this.clickHouseReader.shouldUseForRange(start, end)
-        ? await this.clickHouseReader.getEntityDeviceDailyTotals(backendId, dimension, value, start, end, countryIPs) : null;
+        ? await this.clickHouseReader.getEntityDeviceDailyTotals(backendId, dimension, value, start, end, countryIPs, sourceIP) : null;
       if (deviceRows === null) {
         this.failIfStrictFallback('entity-device-daily-trend');
         this.recordRoute('entity-device-daily-trend', 'sqlite');
-        deviceRows = this.db.repos.timeseries.getEntityDeviceDailyTotals(backendId, dimension, value, start, end);
+        deviceRows = this.db.repos.timeseries.getEntityDeviceDailyTotals(backendId, dimension, value, start, end, sourceIP);
       } else this.recordRoute('entity-device-daily-trend', 'clickhouse');
       const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile.displayName]));
       const grouped = new Map<string | null, Map<number, { upload: number; download: number }>>();

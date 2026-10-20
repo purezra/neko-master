@@ -230,10 +230,12 @@ export const SCHEMA = {
       source_ip TEXT NOT NULL DEFAULT '',
       chain TEXT NOT NULL,
       rule TEXT NOT NULL,
+      matched_rule TEXT NOT NULL DEFAULT '',
+      rule_payload TEXT NOT NULL DEFAULT '',
       upload INTEGER DEFAULT 0,
       download INTEGER DEFAULT 0,
       connections INTEGER DEFAULT 0,
-      PRIMARY KEY (backend_id, minute, domain, ip, source_ip, chain, rule),
+      PRIMARY KEY (backend_id, minute, domain, ip, source_ip, chain, rule, matched_rule, rule_payload),
       FOREIGN KEY (backend_id) REFERENCES backend_configs(id) ON DELETE CASCADE
     );
   `,
@@ -264,10 +266,12 @@ export const SCHEMA = {
       source_ip TEXT NOT NULL DEFAULT '',
       chain TEXT NOT NULL,
       rule TEXT NOT NULL,
+      matched_rule TEXT NOT NULL DEFAULT '',
+      rule_payload TEXT NOT NULL DEFAULT '',
       upload INTEGER DEFAULT 0,
       download INTEGER DEFAULT 0,
       connections INTEGER DEFAULT 0,
-      PRIMARY KEY (backend_id, hour, domain, ip, source_ip, chain, rule),
+      PRIMARY KEY (backend_id, hour, domain, ip, source_ip, chain, rule, matched_rule, rule_payload),
       FOREIGN KEY (backend_id) REFERENCES backend_configs(id) ON DELETE CASCADE
     );
   `,

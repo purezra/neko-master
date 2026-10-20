@@ -9,6 +9,7 @@ export interface ExportJsonPayload {
     range: { start: string; end: string; endExclusive: boolean };
     requestedRange?: { start: string; end: string };
     topN: number;
+    deviceScope?: string;
     exportedAt: string;
     timeZone: string;
     utcOffset: string;
@@ -45,6 +46,7 @@ export function buildExportJsonPayload(
         end: formatExportTimestamp(meta.requestedRange.end),
       } } : {}),
       topN: meta.topN,
+      ...(meta.deviceScope ? { deviceScope: meta.deviceScope } : {}),
       exportedAt: formatExportTimestamp(meta.exportedAt),
       timeZone: EXPORT_TIME_ZONE,
       utcOffset: EXPORT_UTC_OFFSET,

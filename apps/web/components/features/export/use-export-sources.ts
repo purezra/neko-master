@@ -15,7 +15,8 @@ import {
   getSummaryQueryKey,
   getDeviceTrafficDetailsQueryKey,
 } from "@/lib/stats-query-keys";
-import type { StatsSummary, DeviceTrafficDetail } from "@neko-master/shared";
+import type { StatsSummary, DeviceTrafficDetail, DeviceTrafficFilters } from "@neko-master/shared";
+import { summarizeDeviceDetails } from "@/lib/device-traffic";
 import type {
   ExportDatasetId,
   ExportSourceData,
@@ -26,6 +27,8 @@ export interface UseExportSourcesParams {
   timeRange?: TimeRange;
   topN: number;
   enabled: Partial<Record<ExportDatasetId, boolean>>;
+  deviceFilters?: DeviceTrafficFilters;
+  scoped?: boolean;
 }
 
 export interface UseExportSourcesResult {
@@ -42,23 +45,25 @@ export function useExportSources({
   timeRange,
   topN,
   enabled,
+  deviceFilters,
+  scoped = false,
 }: UseExportSourcesParams): UseExportSourcesResult {
   const t = useTranslations("export");
   const stableRange = useStableTimeRange(timeRange);
   const hasBackend = !!backendId && !!stableRange;
 
   const deviceDetailsQuery = useQuery({
-    queryKey: getDeviceTrafficDetailsQueryKey(backendId, stableRange),
+    queryKey: getDeviceTrafficDetailsQueryKey(backendId, stableRange, deviceFilters),
     queryFn: async () => {
       const rows: DeviceTrafficDetail[] = [];
       for (let offset = 0; offset < 100_000; offset += 1000) {
-        const page = await api.getDeviceTrafficDetails(backendId!, stableRange!, offset);
+        const page = await api.getDeviceTrafficDetails(backendId!, stableRange!, offset, 1000, deviceFilters);
         rows.push(...page.rows);
         if (!page.hasMore) return rows;
       }
       throw new Error(t("detailLimit"));
     },
-    enabled: hasBackend && !!enabled.deviceDetails,
+    enabled: hasBackend && (!!enabled.deviceDetails || (scoped && !!enabled.devices)),
     staleTime: 60_000,
     retry: false,
   });
@@ -94,7 +99,7 @@ export function useExportSources({
   const devicesQuery = useQuery({
     queryKey: getDevicesQueryKey(backendId, topN, stableRange),
     queryFn: () => api.getDevices(backendId, topN, stableRange),
-    enabled: hasBackend && enabled.devices,
+    enabled: hasBackend && enabled.devices && !scoped,
     staleTime: 15_000,
   });
 
@@ -134,7 +139,7 @@ export function useExportSources({
       countries: countriesQuery.data ?? [],
       rules: rulesQuery.data ?? [],
       proxies: proxiesQuery.data ?? [],
-      devices: devicesQuery.data ?? [],
+      devices: scoped ? summarizeDeviceDetails(deviceDetailsQuery.data ?? []) : devicesQuery.data ?? [],
       domains: domainsQuery.data?.data ?? [],
       ips: ipsQuery.data?.data ?? [],
       deviceDetails: deviceDetailsQuery.data ?? [],
@@ -148,6 +153,7 @@ export function useExportSources({
       domainsQuery.data,
       ipsQuery.data,
       deviceDetailsQuery.data,
+      scoped,
     ],
   );
 
@@ -156,14 +162,15 @@ export function useExportSources({
     countries: countriesQuery,
     rules: rulesQuery,
     proxies: proxiesQuery,
-    devices: devicesQuery,
+    devices: scoped ? deviceDetailsQuery : devicesQuery,
     domains: domainsQuery,
     ips: ipsQuery,
     deviceDetails: deviceDetailsQuery,
   };
   const queries = (Object.keys(queryByDataset) as ExportDatasetId[])
     .filter((id) => enabled[id] && hasBackend)
-    .map((id) => queryByDataset[id]);
+    .map((id) => queryByDataset[id])
+    .filter((query, index, all) => all.indexOf(query) === index);
   const errorQuery = queries.find((query) => query.error);
   const isLoading = queries.some((query) => query.isPending || query.isFetching);
 

@@ -182,6 +182,8 @@ CREATE TABLE IF NOT EXISTS ${config.database}.traffic_minute (
   source_ip String,
   chain String,
   rule String,
+  matched_rule String DEFAULT '',
+  rule_payload String DEFAULT '',
   upload UInt64,
   download UInt64,
   connections UInt32
@@ -244,6 +246,8 @@ CREATE TABLE IF NOT EXISTS ${config.database}.traffic_detail (
   source_ip String,
   chain String,
   rule String,
+  matched_rule String DEFAULT '',
+  rule_payload String DEFAULT '',
   upload UInt64,
   download UInt64,
   connections UInt32
@@ -300,6 +304,14 @@ ENGINE = Buffer(
 )
 `,
   );
+
+  // Additive upgrade: old parts read as empty raw-rule fields. Upgrade both
+  // destination and buffer before accepting writes with the new columns.
+  for (const table of ['traffic_detail', 'traffic_detail_buffer']) {
+    await runClickHouseQuery(config, `ALTER TABLE ${config.database}.${table}
+      ADD COLUMN IF NOT EXISTS matched_rule String DEFAULT '',
+      ADD COLUMN IF NOT EXISTS rule_payload String DEFAULT ''`);
+  }
 
   console.info('[ClickHouse] Schema ensured (traffic_minute, country_minute, traffic_agg, traffic_detail, buffer tables)');
 }

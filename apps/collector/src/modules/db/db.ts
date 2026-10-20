@@ -4,6 +4,7 @@ import fs from 'fs';
 import { randomBytes } from 'crypto';
 import { normalizeGeoIP, type Connection, type DomainStats, type IPStats, type HourlyStats, type ProxyStats, type RuleStats, type ProxyTrafficStats, type DeviceStats } from '@neko-master/shared';
 import { getAllSchemaStatements } from '../../database/schema.js';
+import { migrateMatchedRuleFacts } from '../../database/matched-rule-migration.js';
 import { cleanupMisattributedRuleNames } from '../../database/rule-name-cleanup.js';
 import {
   AuthRepository,
@@ -177,6 +178,7 @@ export class StatsDatabase {
 
     // Migrate existing data if needed (from single-backend schema)
     this.migrateIfNeeded();
+    migrateMatchedRuleFacts(this.db);
 
     // One-time cleanup: remap v1.3.9-era rule-type keys back to policy groups
     try {
@@ -356,13 +358,13 @@ export class StatsDatabase {
 
       // Backfill hourly_dim_stats from minute_dim_stats
       this.db.exec(`
-        INSERT INTO hourly_dim_stats (backend_id, hour, domain, ip, source_ip, chain, rule, upload, download, connections)
+        INSERT INTO hourly_dim_stats (backend_id, hour, domain, ip, source_ip, chain, rule, matched_rule, rule_payload, upload, download, connections)
         SELECT backend_id,
                SUBSTR(minute, 1, 13) || ':00:00' as hour,
-               domain, ip, source_ip, chain, rule,
+               domain, ip, source_ip, chain, rule, matched_rule, rule_payload,
                SUM(upload), SUM(download), SUM(connections)
         FROM minute_dim_stats
-        GROUP BY backend_id, SUBSTR(minute, 1, 13), domain, ip, source_ip, chain, rule
+        GROUP BY backend_id, SUBSTR(minute, 1, 13), domain, ip, source_ip, chain, rule, matched_rule, rule_payload
       `);
 
       // Backfill hourly_country_stats from minute_country_stats

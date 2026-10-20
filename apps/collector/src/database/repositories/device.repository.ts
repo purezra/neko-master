@@ -6,17 +6,31 @@
 import type Database from 'better-sqlite3';
 import type { DomainStats, IPStats, DeviceStats, DeviceProfile, DeviceTrafficDetail } from '@neko-master/shared';
 import { BaseRepository } from './base.repository.js';
+import { deviceTrafficOrder, type ResolvedDeviceTrafficFilters } from '../../modules/stats/device-traffic-filter.js';
 
 export class DeviceRepository extends BaseRepository {
-  getTrafficDetails(backendId: number, start: string, end: string, offset: number, limit: number): DeviceTrafficDetail[] {
+  getTrafficDetails(backendId: number, start: string, end: string, offset: number, limit: number, filters: ResolvedDeviceTrafficFilters = {}): DeviceTrafficDetail[] {
     const resolved = this.resolveFactTable(start, end);
-    return this.db.prepare(`SELECT source_ip AS sourceIP, domain, ip, rule, chain,
+    const where = ['backend_id = @backendId', `${resolved.timeCol} >= @start`, `${resolved.timeCol} <= @end`];
+    const params: Record<string, string | number> = { backendId, start: resolved.startKey, end: resolved.endKey, offset, limit };
+    if (filters.sourceIP !== undefined) { where.push('source_ip = @sourceIP'); params.sourceIP = filters.sourceIP; }
+    for (const [key, column] of [['domain', "domain || ' ' || ip"], ['rule', "rule || ' ' || matched_rule || ' ' || rule_payload"],
+      ['policyGroup', "CASE WHEN INSTR(chain, ' > ') > 0 THEN rule ELSE '' END"]] as const) {
+      if (filters[key]) { where.push(`INSTR(LOWER(${column}), LOWER(@${key})) > 0`); params[key] = filters[key]; }
+    }
+    for (const [kind, ips] of [['include', filters.includeIPs], ['exclude', filters.excludeIPs]] as const) {
+      if (ips === undefined) continue;
+      if (!ips.length) { if (kind === 'include') where.push('0=1'); continue; }
+      const placeholders = ips.map((ip, index) => { const key = `${kind}${index}`; params[key] = ip; return `@${key}`; });
+      where.push(`source_ip ${kind === 'exclude' ? 'NOT IN' : 'IN'} (${placeholders.join(',')})`);
+    }
+    return this.db.prepare(`SELECT source_ip AS sourceIP, domain, ip, rule, chain, matched_rule AS matchedRule, rule_payload AS rulePayload,
       SUM(upload) AS totalUpload, SUM(download) AS totalDownload, SUM(connections) AS totalConnections,
       MAX(${resolved.timeCol}) AS lastSeen FROM ${resolved.table}
-      WHERE backend_id = ? AND ${resolved.timeCol} >= ? AND ${resolved.timeCol} <= ?
-      GROUP BY source_ip, domain, ip, rule, chain
-      ORDER BY source_ip, domain, ip, rule, chain LIMIT ? OFFSET ?`)
-      .all(backendId, resolved.startKey, resolved.endKey, limit, offset) as DeviceTrafficDetail[];
+      WHERE ${where.join(' AND ')}
+      GROUP BY source_ip, domain, ip, rule, chain, matched_rule, rule_payload
+      ORDER BY ${deviceTrafficOrder(filters)} LIMIT @limit OFFSET @offset`)
+      .all(params) as DeviceTrafficDetail[];
   }
 
   getProfiles(backendId: number): DeviceProfile[] {

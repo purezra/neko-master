@@ -41,7 +41,7 @@ describe('ClickHouse entity daily totals', () => {
     expect(rows?.[0]).toMatchObject({ sourceIP: '192.168.1.2', totalUpload: 12, totalDownload: 34, totalConnections: 2 });
     const sql = String(fetchMock.mock.calls[0][1]?.body);
     expect(sql).toContain('GROUP BY source_ip, domain, ip, rule, chain');
-    expect(sql).toContain('ORDER BY source_ip, domain, ip, rule, chain LIMIT 1001 OFFSET 1000');
+    expect(sql).toContain('ORDER BY sourceIP ASC, sourceIP, domain, ip, rule, chain, matchedRule, rulePayload LIMIT 1001 OFFSET 1000');
     expect(sql).toContain("minute <= toDateTime('2026-10-18 07:59:59')");
   });
 });

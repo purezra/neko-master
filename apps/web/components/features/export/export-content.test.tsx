@@ -7,6 +7,7 @@ vi.mock("./use-export-sources", () => ({ useExportSources: () => ({
   ...state, sources: { domains: [], ips: [], rules: [], countries: [], devices: [], proxies: [] }, refetch: vi.fn(),
 }) }));
 vi.mock("next-intl", () => ({ useLocale: () => "en", useTranslations: () => (key: string) => key }));
+vi.mock("@/components/features/devices/device-scope-select", () => ({ DeviceScopeSelect: () => null }));
 vi.mock("@/components/common", () => ({ TimeRangePicker: () => null }));
 vi.mock("@/lib/export/history", () => ({ useExportHistory: () => ({ latest: null, record: vi.fn() }) }));
 

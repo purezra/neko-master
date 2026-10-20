@@ -20,12 +20,12 @@ function createRawDb(): Database.Database {
 function seedDimRows(db: Database.Database, isoMinute: string) {
   const hour = isoMinute.slice(0, 13) + ':00:00';
   db.prepare(`
-    INSERT INTO minute_dim_stats (backend_id, minute, domain, ip, source_ip, chain, rule, upload, download, connections)
-    VALUES (?, ?, 'a.com', '1.1.1.1', '', 'ProxyA', 'RuleA', 1, 1, 1)
+    INSERT INTO minute_dim_stats (backend_id, minute, domain, ip, source_ip, chain, rule, matched_rule, rule_payload, upload, download, connections)
+    VALUES (?, ?, 'a.com', '1.1.1.1', '', 'ProxyA', 'RuleA', 'RuleSet', 'raw-test', 1, 1, 1)
   `).run(BACKEND_ID, isoMinute);
   db.prepare(`
-    INSERT INTO hourly_dim_stats (backend_id, hour, domain, ip, source_ip, chain, rule, upload, download, connections)
-    VALUES (?, ?, 'a.com', '1.1.1.1', '', 'ProxyA', 'RuleA', 1, 1, 1)
+    INSERT INTO hourly_dim_stats (backend_id, hour, domain, ip, source_ip, chain, rule, matched_rule, rule_payload, upload, download, connections)
+    VALUES (?, ?, 'a.com', '1.1.1.1', '', 'ProxyA', 'RuleA', 'RuleSet', 'raw-test', 1, 1, 1)
   `).run(BACKEND_ID, hour);
   db.prepare(`
     INSERT INTO hourly_country_stats (backend_id, hour, country, country_name, continent, upload, download, connections)
