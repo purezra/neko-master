@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { BarChart3, Link2, Smartphone } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,16 +10,11 @@ import {
   Cell,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Cell as BarCell,
-  LabelList,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatBytes, formatNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { type TimeRange } from "@/lib/api";
@@ -52,23 +47,6 @@ interface InteractiveDeviceStatsProps {
 }
 const DEVICE_DETAIL_WS_MIN_PUSH_MS = 3_000;
 
-function renderCustomBarLabel(props: import("recharts").LabelProps) {
-  const { x, y, width, value, height } = props;
-  if (typeof x !== "number" || typeof y !== "number" || typeof width !== "number" || typeof height !== "number") return <></>;
-  return (
-    <text
-      x={x + width + 6}
-      y={y + height / 2}
-      fill="currentColor"
-      fontSize={11}
-      dominantBaseline="central"
-      textAnchor="start"
-      style={{ fontVariantNumeric: "tabular-nums" }}>
-      {formatBytes(Number(value) || 0, 0)}
-    </text>
-  );
-}
-
 export function InteractiveDeviceStats({
   data,
   activeBackendId,
@@ -86,16 +64,6 @@ export function InteractiveDeviceStats({
   const [deviceChoice, setSelectedDevice] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("domains");
   const [detailPageSize, setDetailPageSize] = useState<PageSize>(10);
-  const [showDomainBarLabels, setShowDomainBarLabels] = useState(true);
-
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 640px)");
-    const update = () => setShowDomainBarLabels(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
   const chartData = useMemo(() => {
     if (!data) return [];
     return data.map((device, index) => ({
@@ -216,7 +184,6 @@ export function InteractiveDeviceStats({
       )
       .slice(0, 10)
       .map((d, i) => ({
-        name: d.domain.length > 25 ? d.domain.slice(0, 22) + "..." : d.domain,
         fullName: d.domain,
         total: d.totalDownload + d.totalUpload,
         download: d.totalDownload,
@@ -434,13 +401,13 @@ export function InteractiveDeviceStats({
         {/* Top Domains Chart */}
         <Card className="min-w-0 md:col-span-2 xl:col-span-5">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-1">
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
                 {domainsT("title")}
               </CardTitle>
               {selectedDeviceData && (
-                <span className="text-xs text-muted-foreground">
+                <span className="min-w-0 max-w-full text-[11px] leading-5 text-muted-foreground [overflow-wrap:anywhere]">
                   {selectedDeviceData.name}
                 </span>
               )}
@@ -460,94 +427,39 @@ export function InteractiveDeviceStats({
                 </p>
               </div>
             ) : (
-              <div className="h-[280px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={domainChartData}
-                    layout="vertical"
-                    margin={{
-                      left: 0,
-                      right: showDomainBarLabels ? 60 : 10,
-                      top: 5,
-                      bottom: 5,
-                    }}>
-                    <XAxis type="number" hide />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={100}
-                      tick={{ fontSize: 11 }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <RechartsTooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const item = payload[0].payload;
-                          return (
-                            <div className="bg-background border border-border p-3 rounded-lg shadow-lg min-w-[160px]">
-                              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
-                                <Favicon domain={item.fullName} size="sm" />
-                                <span
-                                  className="font-medium text-sm truncate max-w-[180px]"
-                                  title={item.fullName}>
-                                  {item.fullName}
-                                </span>
+              <TooltipProvider delayDuration={150}>
+                <ScrollArea className="h-[280px] pr-3">
+                  <ol className="min-w-0 space-y-3 py-1" aria-label={domainsT("topDomainsByTraffic")}>
+                    {domainChartData.map((item) => (
+                      <li key={item.fullName} className="min-w-0">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div tabIndex={0} className="min-w-0 space-y-1.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                              <div className="flex min-w-0 items-start gap-2">
+                                <Favicon domain={item.fullName} size="sm" className="mt-0.5 shrink-0" />
+                                <span className="min-w-0 flex-1 whitespace-normal text-[11px] leading-4 text-foreground [overflow-wrap:anywhere]">{item.fullName}</span>
+                                <span className="shrink-0 whitespace-nowrap text-right text-[11px] leading-4 tabular-nums text-muted-foreground">{formatBytes(item.total, 0)}</span>
                               </div>
-                              <div className="space-y-2 text-xs">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-muted-foreground">
-                                    Total
-                                  </span>
-                                  <span className="font-semibold">
-                                    {formatBytes(item.total)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-blue-500">
-                                    Download
-                                  </span>
-                                  <span>{formatBytes(item.download)}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-purple-500">
-                                    Upload
-                                  </span>
-                                  <span>{formatBytes(item.upload)}</span>
-                                </div>
-                                <div className="flex justify-between items-center pt-1 border-t border-border/50">
-                                  <span className="text-emerald-500">
-                                    Connections
-                                  </span>
-                                  <span>{formatNumber(item.connections)}</span>
-                                </div>
+                              <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                                <div className="h-full rounded-full" style={{ width: `${domainChartData[0].total > 0 ? (item.total / domainChartData[0].total) * 100 : 0}%`, backgroundColor: item.color }} />
                               </div>
                             </div>
-                          );
-                        }
-                        return null;
-                      }}
-                      cursor={{ fill: "rgba(128, 128, 128, 0.1)" }}
-                    />
-                    <Bar
-                      dataKey="total"
-                      radius={[0, 4, 4, 0]}
-                      maxBarSize={24}
-                      isAnimationActive={false}>
-                      {domainChartData.map((entry, index) => (
-                        <BarCell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                      {showDomainBarLabels && (
-                        <LabelList
-                          dataKey="total"
-                          position="right"
-                          content={renderCustomBarLabel}
-                        />
-                      )}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[min(20rem,calc(100vw-2rem))] space-y-2 p-3">
+                            <p className="whitespace-normal font-medium leading-5 [overflow-wrap:anywhere]">{item.fullName}</p>
+                            <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-5 gap-y-1 tabular-nums">
+                              <dt>{domainsT("total")}</dt><dd className="text-right">{formatBytes(item.total)}</dd>
+                              <dt>{domainsT("download")}</dt><dd className="text-right">{formatBytes(item.download)}</dd>
+                              <dt>{domainsT("upload")}</dt><dd className="text-right">{formatBytes(item.upload)}</dd>
+                              <dt>{domainsT("connections")}</dt><dd className="text-right">{formatNumber(item.connections)}</dd>
+                            </dl>
+                          </TooltipContent>
+                        </Tooltip>
+                      </li>
+                    ))}
+                  </ol>
+                </ScrollArea>
+              </TooltipProvider>
             )}
           </CardContent>
         </Card>
