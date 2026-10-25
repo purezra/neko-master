@@ -8,10 +8,28 @@
  * - Domain proxy statistics
  */
 import type Database from 'better-sqlite3';
-import type { DomainStats, IPStats } from '@neko-master/shared';
+import type { DomainStats, DomainUsageRow, IPStats } from '@neko-master/shared';
 import { BaseRepository } from './base.repository.js';
 
 export class DomainRepository extends BaseRepository {
+  getDomainUsage(backendId: number, domain: string, start: string, end: string): DomainUsageRow[] {
+    const resolved = this.resolveFactTable(start, end);
+    // Keep the response bounded without dropping traffic from the denominator.
+    return this.db.prepare(`WITH pairs AS (
+      SELECT source_ip, chain, SUM(upload) AS upload, SUM(download) AS download,
+        SUM(connections) AS connections FROM ${resolved.table}
+      WHERE backend_id = ? AND domain = ? AND ${resolved.timeCol} >= ? AND ${resolved.timeCol} <= ?
+      GROUP BY source_ip, chain
+    ), ranked AS (
+      SELECT *, ROW_NUMBER() OVER (ORDER BY upload + download DESC, source_ip, chain) AS rank FROM pairs
+    ) SELECT CASE WHEN rank <= 500 THEN source_ip ELSE NULL END AS sourceIP,
+      CASE WHEN rank <= 500 THEN chain ELSE NULL END AS chain,
+      SUM(upload) AS totalUpload, SUM(download) AS totalDownload, SUM(connections) AS totalConnections
+      FROM ranked GROUP BY CASE WHEN rank <= 500 THEN source_ip ELSE NULL END,
+        CASE WHEN rank <= 500 THEN chain ELSE NULL END ORDER BY totalUpload + totalDownload DESC`)
+      .all(backendId, domain, resolved.startKey, resolved.endKey) as DomainUsageRow[];
+  }
+
   constructor(db: Database.Database) {
     super(db);
   }

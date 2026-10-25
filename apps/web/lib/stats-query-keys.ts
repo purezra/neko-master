@@ -1,6 +1,14 @@
 import type { TimeRange } from "@/lib/api";
 import type { ComparisonRange, TrafficEntityDimension, DeviceDomainComparisonOptions, DeviceTrafficFilters } from "@neko-master/shared";
 
+export function getDomainUsageQueryKey(backendId: number, domain: string, range: TimeRange) {
+  return ["stats", "domain-usage", { backendId, domain, start: range.start, end: range.end }] as const;
+}
+
+export function getEntityUsageQueryKey(backendId: number, dimension: "proxy" | "country", value: string, range: TimeRange, metric: "traffic" | "connections") {
+  return ["stats", "entity-usage", { backendId, dimension, value, start: range.start, end: range.end, metric }] as const;
+}
+
 export function getDeviceDomainComparisonQueryKey(backendId: number, sourceIP: string, current: ComparisonRange, baseline: ComparisonRange, options: DeviceDomainComparisonOptions) {
   return ["stats", "device-domain-comparison", { backendId, sourceIP, current, baseline, ...options }] as const;
 }

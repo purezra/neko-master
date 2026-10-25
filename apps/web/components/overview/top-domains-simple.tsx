@@ -33,7 +33,7 @@ export const TopDomainsSimple = React.memo(function TopDomainsSimple({
   isLoading,
 }: TopDomainsSimpleProps) {
   const t = useTranslations("topDomains");
-  const trendT = useTranslations("entityTrend");
+  const usageT = useTranslations("domainUsage");
   const { settings } = useSettings();
   const faviconDisabled = settings.faviconProvider === "off";
   const itemCount = useResponsiveItemCount();
@@ -130,7 +130,7 @@ export const TopDomainsSimple = React.memo(function TopDomainsSimple({
               className={cn("p-2.5 rounded-xl border border-border/50 bg-card/50 hover:bg-card transition-colors", onSelect && "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring")}
               role={onSelect ? "button" : undefined}
               tabIndex={onSelect ? 0 : undefined}
-              title={onSelect ? trendT("open") : undefined}
+              title={onSelect ? usageT("open") : undefined}
               onClick={onSelect ? () => onSelect(domain.domain) : undefined}
               onKeyDown={onSelect ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(domain.domain); } } : undefined}
             >

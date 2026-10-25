@@ -110,6 +110,34 @@ function getTimeRange(request: FastifyRequest, reply: FastifyReply, isShowcaseMo
 const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Promise<void> => {
   const service = fastify.statsService;
 
+  fastify.get('/usage', { schema: { querystring: {
+    type: 'object', required: ['dimension', 'value', 'start', 'end'], properties: {
+      backendId: { type: 'string', pattern: '^[0-9]+$' }, dimension: { type: 'string', enum: ['proxy', 'country'] },
+      value: { type: 'string', minLength: 1, maxLength: 512 }, start: { type: 'string', minLength: 1 }, end: { type: 'string', minLength: 1 },
+      metric: { type: 'string', enum: ['traffic', 'connections'], default: 'traffic' },
+    },
+  } } }, async (request, reply) => {
+    const backendId = getBackendId(request, service);
+    if (backendId === null || !service.getDeviceProfiles(backendId)) return reply.status(404).send({ error: 'Backend not found' });
+    const range = getTimeRange(request, reply, fastify.authService.isShowcaseMode());
+    if (!range) return;
+    const query = request.query as { dimension: 'proxy' | 'country'; value: string; metric: 'traffic' | 'connections' };
+    return service.getEntityUsageWithRouting(backendId, query.dimension, query.value, range.start!, range.end!, query.metric);
+  });
+
+  fastify.get('/domains/usage', { schema: { querystring: {
+    type: 'object', required: ['domain', 'start', 'end'], properties: {
+      backendId: { type: 'string', pattern: '^[0-9]+$' },
+      domain: { type: 'string', minLength: 1, maxLength: 253 }, start: { type: 'string', minLength: 1 }, end: { type: 'string', minLength: 1 },
+    },
+  } } }, async (request, reply) => {
+    const backendId = getBackendId(request, service);
+    if (backendId === null || !service.getDeviceProfiles(backendId)) return reply.status(404).send({ error: 'Backend not found' });
+    const range = getTimeRange(request, reply, fastify.authService.isShowcaseMode());
+    if (!range) return;
+    return service.getDomainUsageWithRouting(backendId, (request.query as { domain: string }).domain, range.start!, range.end!);
+  });
+
   fastify.get('/comparison/device-domains', { schema: { querystring: {
     type: 'object', required: ['sourceIP', 'start', 'end', 'baselineStart', 'baselineEnd'],
     properties: {

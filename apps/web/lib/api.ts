@@ -1,6 +1,8 @@
 import type {
   StatsSummary,
   DomainStats,
+  DomainUsageRow,
+  EntityUsageRow,
   IPStats,
   ProxyStats,
   RuleStats,
@@ -244,6 +246,10 @@ function buildUrl(base: string, params: Record<string, string | number | boolean
 }
 
 export const api = {
+  getEntityUsage: (backendId: number, dimension: "proxy" | "country", value: string, range: TimeRange, metric: "traffic" | "connections") =>
+    fetchJson<EntityUsageRow[]>(buildUrl(`${API_BASE}/stats/usage`, { backendId, dimension, value, start: range.start, end: range.end, metric })),
+  getDomainUsage: (backendId: number, domain: string, range: TimeRange) =>
+    fetchJson<DomainUsageRow[]>(buildUrl(`${API_BASE}/stats/domains/usage`, { backendId, domain, start: range.start, end: range.end })),
   getDeviceDomainComparison: (backendId: number, sourceIP: string, current: ComparisonRange, baseline: ComparisonRange, options: DeviceDomainComparisonOptions) =>
     fetchJson<DeviceDomainComparison>(buildUrl(`${API_BASE}/stats/comparison/device-domains`, { backendId, sourceIP, start: current.start, end: current.end, baselineStart: baseline.start, baselineEnd: baseline.end, ...options })),
   getEntityDailyTrend: (backendId: number, dimension: TrafficEntityDimension, value: string, range: TimeRange, includeDevices = false, sourceIP?: string) =>

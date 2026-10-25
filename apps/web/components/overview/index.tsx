@@ -7,6 +7,8 @@ import { TopDomainsSimple } from "./top-domains-simple";
 import { TopProxiesSimple } from "./top-proxies-simple";
 import { TopCountriesSimple } from "./top-countries-simple";
 import { EntityTrendDialog, type TrendEntity } from "./entity-trend-dialog";
+import { DomainUsageDialog } from "./domain-usage-dialog";
+import { EntityUsageDialog } from "./entity-usage-dialog";
 import { getEntityTrendRange } from "@/lib/entity-trend";
 import { TrafficTrendChart } from "@/components/features/stats/charts/trend-chart";
 import { useStatsWebSocket } from "@/lib/websocket";
@@ -120,6 +122,8 @@ export function OverviewTab({
   const [proxySort, setProxySort] = useState<"traffic" | "connections">("traffic");
   const [countrySort, setCountrySort] = useState<"traffic" | "connections">("traffic");
   const [selectedTrend, setSelectedTrend] = useState<(TrendEntity & { backendId: number }) | null>(null);
+  const [selectedDomain, setSelectedDomain] = useState<{ value: string; backendId: number } | null>(null);
+  const [selectedUsage, setSelectedUsage] = useState<{ dimension: "proxy" | "country"; value: string; backendId: number } | null>(null);
   const entityTrendRange = getEntityTrendRange(timePreset, timeRange);
   const openEntityTrend = (dimension: TrendEntity["dimension"], value: string) => {
     if (activeBackendId && entityTrendRange) setSelectedTrend({ dimension, value, backendId: activeBackendId });
@@ -297,7 +301,7 @@ export function OverviewTab({
           sortBy={domainSort}
           onSortChange={setDomainSort}
           onViewAll={() => onNavigate?.("domains")}
-          onSelect={entityTrendRange && activeBackendId ? value => openEntityTrend("domain", value) : undefined}
+          onSelect={activeBackendId ? value => setSelectedDomain({ value, backendId: activeBackendId }) : undefined}
           isLoading={isLoading}
         />
         
@@ -307,7 +311,7 @@ export function OverviewTab({
           sortBy={proxySort}
           onSortChange={setProxySort}
           onViewAll={() => onNavigate?.("proxies")}
-          onSelect={entityTrendRange && activeBackendId ? value => openEntityTrend("proxy", value) : undefined}
+          onSelect={activeBackendId ? value => setSelectedUsage({ dimension: "proxy", value, backendId: activeBackendId }) : undefined}
           isLoading={isLoading}
         />
         
@@ -317,10 +321,20 @@ export function OverviewTab({
           sortBy={countrySort}
           onSortChange={setCountrySort}
           onViewAll={() => onNavigate?.("countries")}
-          onSelect={entityTrendRange && activeBackendId ? value => openEntityTrend("country", value) : undefined}
+          onSelect={activeBackendId ? value => setSelectedUsage({ dimension: "country", value, backendId: activeBackendId }) : undefined}
           isLoading={isLoading}
         />
       </div>
+      {selectedDomain && selectedDomain.backendId === activeBackendId && <DomainUsageDialog
+        key={`${activeBackendId}-${selectedDomain.value}-${timeRange.start}-${timeRange.end}`}
+        domain={selectedDomain.value} backendId={activeBackendId} range={timeRange} onClose={() => setSelectedDomain(null)}
+        onTrend={entityTrendRange ? () => { openEntityTrend("domain", selectedDomain.value); setSelectedDomain(null); } : undefined}
+      />}
+      {selectedUsage && selectedUsage.backendId === activeBackendId && <EntityUsageDialog
+        key={`${activeBackendId}-${selectedUsage.dimension}-${selectedUsage.value}-${timeRange.start}-${timeRange.end}`}
+        dimension={selectedUsage.dimension} value={selectedUsage.value} backendId={activeBackendId} range={timeRange} onClose={() => setSelectedUsage(null)}
+        onTrend={entityTrendRange ? () => { openEntityTrend(selectedUsage.dimension, selectedUsage.value); setSelectedUsage(null); } : undefined}
+      />}
       {selectedTrend && entityTrendRange && selectedTrend.backendId === activeBackendId && <EntityTrendDialog
         entity={selectedTrend} backendId={activeBackendId} range={entityTrendRange} onClose={() => setSelectedTrend(null)}
       />}

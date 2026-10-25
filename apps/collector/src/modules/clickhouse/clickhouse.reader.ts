@@ -1,5 +1,7 @@
 import type {
   DomainStats,
+  DomainUsageRow,
+  EntityUsageRow,
   HourlyStats,
   IPStats,
   ProxyStats,
@@ -15,6 +17,7 @@ import type {
 } from '@neko-master/shared';
 import { loadClickHouseConfig } from './clickhouse.config.js';
 import { deviceTrafficOrder, type ResolvedDeviceTrafficFilters } from '../stats/device-traffic-filter.js';
+import { usageBreakdownSQL } from '../stats/usage-breakdown.js';
 
 type StatsQuerySource = 'sqlite' | 'clickhouse' | 'auto';
 
@@ -60,6 +63,45 @@ export type ClickHouseSummary = {
 };
 
 export class ClickHouseReader {
+  private usageBounds(start: string, end: string): { start: string; end: string } {
+    const hourly = Date.parse(end) - Date.parse(start) > 6 * 3600000;
+    const bucket = (value: string) => new Date(value).toISOString().slice(0, hourly ? 13 : 16) + (hourly ? ':00:00Z' : ':00Z');
+    return { start: this.toDateTime(bucket(start)), end: this.toDateTime(new Date(Date.parse(bucket(end)) + (hourly ? 3600000 : 60000)).toISOString()) };
+  }
+
+  async getEntityUsage(backendId: number, dimension: 'proxy' | 'country', value: string, start: string, end: string, metric: 'traffic' | 'connections', countryIPs: string[] = []): Promise<EntityUsageRow[] | null> {
+    const bounds = this.usageBounds(start, end);
+    const filter = dimension === 'proxy' ? `trimBoth(arrayElement(splitByString(' > ', chain), 1)) = '${this.esc(value)}'`
+      : countryIPs.length ? `ip ${value === 'UNKNOWN' ? 'NOT IN' : 'IN'} (${countryIPs.map(ip => `'${this.esc(ip)}'`).join(',')})` : value === 'UNKNOWN' ? '1=1' : '0=1';
+    const rows = await this.query<Record<string, unknown>>(usageBreakdownSQL(`SELECT source_ip, domain, upload, download, connections
+      FROM ${this.config.database}.traffic_detail_buffer WHERE backend_id = ${backendId}
+      AND minute >= toDateTime('${bounds.start}') AND minute < toDateTime('${bounds.end}') AND ${filter}`, metric));
+    return rows?.map(row => ({ kind: row.kind as EntityUsageRow['kind'], key: String(row.key), totalUpload: Number(row.totalUpload),
+      totalDownload: Number(row.totalDownload), totalConnections: Number(row.totalConnections) })) ?? null;
+  }
+
+  async getDomainUsage(backendId: number, domain: string, start: string, end: string): Promise<DomainUsageRow[] | null> {
+    // Match SQLite's inclusive minute/hour buckets used by the overview.
+    const bounds = this.usageBounds(start, end);
+    const rows = await this.query<Record<string, unknown>>(`WITH pairs AS (
+      SELECT source_ip, chain, SUM(upload) AS uploaded, SUM(download) AS downloaded,
+        SUM(connections) AS connections FROM ${this.config.database}.traffic_detail_buffer
+      WHERE backend_id = ${backendId} AND domain = '${this.esc(domain)}'
+        AND minute >= toDateTime('${bounds.start}') AND minute < toDateTime('${bounds.end}')
+      GROUP BY source_ip, chain
+    ), ranked AS (
+      SELECT *, row_number() OVER (ORDER BY uploaded + downloaded DESC, source_ip, chain) AS rank FROM pairs
+    ), mapped AS (
+      SELECT if(rank <= 500, toNullable(source_ip), NULL) AS sourceIP,
+        if(rank <= 500, toNullable(chain), NULL) AS proxyChain, uploaded, downloaded, connections FROM ranked
+    ) SELECT sourceIP, proxyChain AS chain,
+      SUM(uploaded) AS totalUpload, SUM(downloaded) AS totalDownload, SUM(connections) AS totalConnections
+      FROM mapped GROUP BY sourceIP, proxyChain ORDER BY totalUpload + totalDownload DESC`);
+    return rows?.map(row => ({ sourceIP: row.sourceIP === null ? null : String(row.sourceIP),
+      chain: row.chain === null ? null : String(row.chain), totalUpload: Number(row.totalUpload),
+      totalDownload: Number(row.totalDownload), totalConnections: Number(row.totalConnections) })) ?? null;
+  }
+
   async getDeviceTrafficDetails(backendId: number, start: string, end: string, offset: number, limit: number, filters: ResolvedDeviceTrafficFilters = {}): Promise<DeviceTrafficDetail[] | null> {
     const where: string[] = [];
     if (filters.sourceIP !== undefined) where.push(`source_ip = '${this.esc(filters.sourceIP)}'`);

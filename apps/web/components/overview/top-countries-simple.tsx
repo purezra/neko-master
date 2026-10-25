@@ -28,7 +28,7 @@ export const TopCountriesSimple = React.memo(function TopCountriesSimple({
   isLoading,
 }: TopCountriesSimpleProps) {
   const t = useTranslations("topCountries");
-  const trendT = useTranslations("entityTrend");
+  const usageT = useTranslations("domainUsage");
   const countryName = useCountryName();
   const itemCount = useResponsiveItemCount();
 
@@ -118,7 +118,7 @@ export const TopCountriesSimple = React.memo(function TopCountriesSimple({
               className={cn("p-2.5 rounded-xl border border-border/50 bg-card/50 hover:bg-card transition-colors", onSelect && "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring")}
               role={onSelect ? "button" : undefined}
               tabIndex={onSelect ? 0 : undefined}
-              title={onSelect ? trendT("open") : undefined}
+              title={onSelect ? usageT("openRelated") : undefined}
               onClick={onSelect ? () => onSelect(country.country) : undefined}
               onKeyDown={onSelect ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(country.country); } } : undefined}
             >

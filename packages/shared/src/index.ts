@@ -380,6 +380,23 @@ export * from './gateway-utils.js';
 export * from './geo-ip-utils.js';
 
 export type TrafficEntityDimension = 'domain' | 'proxy' | 'country';
+export interface EntityUsageRow {
+  kind: 'total' | 'device' | 'domain';
+  key: string;
+  displayName?: string;
+  totalUpload: number;
+  totalDownload: number;
+  totalConnections: number;
+}
+export interface DomainUsageRow {
+  /** null represents combinations outside the top 500; empty string is unknown. */
+  sourceIP: string | null;
+  chain: string | null;
+  displayName?: string;
+  totalUpload: number;
+  totalDownload: number;
+  totalConnections: number;
+}
 export interface DailyTrafficTotals {
   bucket: number;
   upload: number;

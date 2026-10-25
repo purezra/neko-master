@@ -22,7 +22,7 @@ import type {
 } from './stats.types.js';
 import { ClickHouseReader } from '../clickhouse/clickhouse.reader.js';
 import { resolveComparisonRanges } from './comparison-range.js';
-import type { DeviceTrafficFilters } from '@neko-master/shared';
+import type { DeviceTrafficFilters, DomainUsageRow, EntityUsageRow } from '@neko-master/shared';
 import type { ResolvedDeviceTrafficFilters } from './device-traffic-filter.js';
 import type { DeviceDomainComparisonOptions, DeviceDomainComparison } from '@neko-master/shared';
 import type { ComparisonRange, DeviceProfile, TrafficComparison, TrafficComparisonRow, TrafficEntityDimension, EntityDailyTrend, DeviceTrafficDetailPage } from '@neko-master/shared';
@@ -40,6 +40,31 @@ interface PaginatedStatsOptions {
 type RoutedSource = 'clickhouse' | 'sqlite';
 
 export class StatsService {
+  async getEntityUsageWithRouting(backendId: number, dimension: 'proxy' | 'country', value: string, start: string, end: string, metric: 'traffic' | 'connections'): Promise<EntityUsageRow[]> {
+    const countryIPs = dimension === 'country' ? this.db.repos.country.getCachedIPs(value) : [];
+    let rows = this.clickHouseReader.shouldUseForRange(start, end)
+      ? await this.clickHouseReader.getEntityUsage(backendId, dimension, value, start, end, metric, countryIPs) : null;
+    if (rows === null) {
+      this.failIfStrictFallback('entity-usage');
+      this.recordRoute('entity-usage', 'sqlite');
+      rows = this.db.repos.timeseries.getEntityUsage(backendId, dimension, value, start, end, metric);
+    } else this.recordRoute('entity-usage', 'clickhouse');
+    const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile.displayName]));
+    return rows.map(row => row.kind === 'device' ? { ...row, displayName: profiles.get(row.key) } : row);
+  }
+
+  async getDomainUsageWithRouting(backendId: number, domain: string, start: string, end: string): Promise<DomainUsageRow[]> {
+    let rows = this.clickHouseReader.shouldUseForRange(start, end)
+      ? await this.clickHouseReader.getDomainUsage(backendId, domain, start, end) : null;
+    if (rows === null) {
+      this.failIfStrictFallback('domains.usage');
+      this.recordRoute('domains.usage', 'sqlite');
+      rows = this.db.repos.domain.getDomainUsage(backendId, domain, start, end);
+    } else this.recordRoute('domains.usage', 'clickhouse');
+    const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile.displayName]));
+    return rows.map(row => ({ ...row, displayName: row.sourceIP ? profiles.get(row.sourceIP) : undefined }));
+  }
+
   async getDeviceTrafficDetailsWithRouting(backendId: number, start: string, end: string, offset: number, limit: number, filters: DeviceTrafficFilters = {}): Promise<DeviceTrafficDetailPage> {
     const profiles = new Map(this.db.repos.device.getProfiles(backendId).map(profile => [profile.sourceIP, profile]));
     const resolved: ResolvedDeviceTrafficFilters = { ...filters };

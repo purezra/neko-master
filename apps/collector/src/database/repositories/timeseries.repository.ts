@@ -5,10 +5,22 @@
  * traffic in range, traffic trend and aggregated trend.
  */
 import type Database from 'better-sqlite3';
-import type { HourlyStats, TrafficEntityDimension, DailyTrafficTotals, DeviceDailyTrafficTotals } from '@neko-master/shared';
+import type { HourlyStats, TrafficEntityDimension, DailyTrafficTotals, DeviceDailyTrafficTotals, EntityUsageRow } from '@neko-master/shared';
 import { BaseRepository } from './base.repository.js';
+import { usageBreakdownSQL } from '../../modules/stats/usage-breakdown.js';
 
 export class TimeseriesRepository extends BaseRepository {
+  getEntityUsage(backendId: number, dimension: 'proxy' | 'country', value: string, start: string, end: string, metric: 'traffic' | 'connections'): EntityUsageRow[] {
+    const resolved = this.resolveFactTable(start, end);
+    const column = dimension === 'proxy'
+      ? "TRIM(CASE WHEN INSTR(m.chain, ' > ') > 0 THEN SUBSTR(m.chain, 1, INSTR(m.chain, ' > ') - 1) ELSE m.chain END)"
+      : "COALESCE(NULLIF(g.country, ''), 'UNKNOWN')";
+    return this.db.prepare(usageBreakdownSQL(`SELECT m.source_ip, m.domain, m.upload, m.download, m.connections FROM ${resolved.table} m
+      ${dimension === 'country' ? 'LEFT JOIN geoip_cache g ON m.ip = g.ip' : ''}
+      WHERE m.backend_id = ? AND m.${resolved.timeCol} >= ? AND m.${resolved.timeCol} <= ? AND ${column} = ?`, metric))
+      .all(backendId, resolved.startKey, resolved.endKey, value) as EntityUsageRow[];
+  }
+
   getEntityDeviceDailyTotals(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string, sourceIP?: string): DeviceDailyTrafficTotals[] {
     const column = dimension === 'proxy'
       ? "TRIM(CASE WHEN INSTR(m.chain, ' > ') > 0 THEN SUBSTR(m.chain, 1, INSTR(m.chain, ' > ') - 1) ELSE m.chain END)"
