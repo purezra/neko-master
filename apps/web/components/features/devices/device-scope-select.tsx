@@ -2,14 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { api, type TimeRange } from "@/lib/api";
+import { api, DEVICE_LIST_MAX, type TimeRange } from "@/lib/api";
 import { getDevicesQueryKey, getDeviceProfilesQueryKey } from "@/lib/stats-query-keys";
 import { Select, SelectContent, SelectItem, SelectLabel, SelectGroup, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
 export function useDeviceCatalog(backendId?: number, range?: TimeRange, enabled = true) {
-  const devices = useQuery({ queryKey: getDevicesQueryKey(backendId, 5000, range),
-    queryFn: () => api.getDevices(backendId, 5000, range), enabled: !!backendId && enabled, staleTime: 60_000 });
+  const devices = useQuery({ queryKey: getDevicesQueryKey(backendId, DEVICE_LIST_MAX, range),
+    queryFn: () => api.getDevices(backendId, DEVICE_LIST_MAX, range), enabled: !!backendId && enabled, staleTime: 60_000 });
   const profiles = useQuery({ queryKey: getDeviceProfilesQueryKey(backendId),
     queryFn: () => api.getDeviceProfiles(backendId!), enabled: !!backendId && enabled, staleTime: 60_000 });
   const catalog = new Map(devices.data?.map(device => [device.sourceIP, { sourceIP: device.sourceIP, displayName: device.displayName ?? "", groupName: device.groupName ?? "" }]));

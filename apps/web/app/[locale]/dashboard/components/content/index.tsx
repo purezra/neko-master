@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InsightThreePanelSkeleton } from "@/components/ui/insight-skeleton";
-import { api, type TimeRange } from "@/lib/api";
+import { api, DEVICE_LIST_MAX, type TimeRange } from "@/lib/api";
 import { getDevicesQueryKey } from "@/lib/stats-query-keys";
 import { keepPreviousByIdentity } from "@/lib/query-placeholder";
 import { useStableTimeRange } from "@/lib/hooks/use-stable-time-range";
@@ -272,11 +272,13 @@ const RulesContent = memo(function RulesContent({
 // Devices Content Component
 const DevicesContent = memo(function DevicesContent({
   activeBackendId,
+  activeBackendName,
   timeRange,
   backendStatus,
   autoRefresh,
 }: {
   activeBackendId?: number;
+  activeBackendName: string;
   timeRange: TimeRange;
   backendStatus: BackendStatus;
   autoRefresh: boolean;
@@ -285,8 +287,8 @@ const DevicesContent = memo(function DevicesContent({
   const t = useTranslations("devices");
 
   const devicesQuery = useQuery({
-    queryKey: getDevicesQueryKey(activeBackendId, 2000, stableTimeRange),
-    queryFn: () => api.getDevices(activeBackendId, 2000, stableTimeRange),
+    queryKey: getDevicesQueryKey(activeBackendId, DEVICE_LIST_MAX, stableTimeRange),
+    queryFn: () => api.getDevices(activeBackendId, DEVICE_LIST_MAX, stableTimeRange),
     enabled: !!activeBackendId,
     placeholderData: (previous, query) => keepPreviousByIdentity(previous, query, { backendId: activeBackendId ?? null }),
     refetchInterval: autoRefresh ? 5000 : false,
@@ -315,6 +317,8 @@ const DevicesContent = memo(function DevicesContent({
         key={activeBackendId}
         data={deviceStats}
         activeBackendId={activeBackendId}
+        backendName={activeBackendName}
+        exportTimeRange={stableTimeRange}
         timeRange={timeRange}
         backendStatus={backendStatus}
         autoRefresh={autoRefresh}
@@ -400,6 +404,7 @@ export function Content({
         return (
           <DevicesContent
             activeBackendId={activeBackendId}
+            activeBackendName={activeBackendName}
             timeRange={timeRange}
             backendStatus={backendStatus}
             autoRefresh={autoRefresh}

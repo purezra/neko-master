@@ -53,6 +53,8 @@ import { ApiError } from "./api-error";
 
 const API_BASE = resolveApiBase();
 const DETAIL_FETCH_LIMIT = 5000;
+/** GET /stats/devices caps its limit here; asking for more is silently clamped. */
+export const DEVICE_LIST_MAX = 2000;
 const inflightGetRequests = new Map<string, Promise<unknown>>();
 
 function isApiStatus(error: unknown, status: number): boolean {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowDown, ArrowUp, ArrowDownToLine, ArrowUpFromLine, ChevronRight, GitCompareArrows, Globe2, Laptop, Link2, Minus, RefreshCw } from "lucide-react";
@@ -25,7 +25,14 @@ export function ComparisonContent({ activeBackendId, timeRange, autoRefresh }: {
   const locale = useLocale();
   const [preset, setPreset] = useState<ComparisonPreset>("today");
   const [selectedDevice, setSelectedDevice] = useState<DeviceComparisonSelection | null>(null);
-  const windows = getComparisonWindows(preset, timeRange);
+  // Anchor the window to the dashboard range instead of Date.now(): the range
+  // only moves while auto-refresh is on, so the query key stops changing every
+  // minute (and re-fetching) when it is off.
+  const { start, end } = timeRange;
+  const windows = useMemo(() => {
+    const anchor = Date.parse(end);
+    return getComparisonWindows(preset, { start, end }, Number.isFinite(anchor) ? anchor : undefined);
+  }, [preset, start, end]);
   const query = useQuery({
     queryKey: getComparisonQueryKey(activeBackendId, windows?.current, windows?.baseline),
     queryFn: () => api.getTrafficComparison(activeBackendId!, windows!.current, windows!.baseline),

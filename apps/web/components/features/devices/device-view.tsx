@@ -26,13 +26,16 @@ import { DeviceTrafficDetails } from "./device-traffic-details";
 interface DeviceViewProps {
   data: DeviceStats[];
   activeBackendId?: number;
+  /** Interval the loaded device rows actually cover; defaults to timeRange. */
+  exportTimeRange?: TimeRange;
+  backendName?: string;
   timeRange: TimeRange;
   backendStatus?: "healthy" | "unhealthy" | "unknown";
   autoRefresh: boolean;
 }
 
 export function DeviceView(props: DeviceViewProps) {
-  const { data, activeBackendId, timeRange } = props;
+  const { data, activeBackendId, timeRange, exportTimeRange, backendName } = props;
   const t = useTranslations("devices");
   const detailsT = useTranslations("deviceDetails");
   const locale = useLocale();
@@ -64,11 +67,19 @@ export function DeviceView(props: DeviceViewProps) {
   });
 
   const exportFiltered = () => {
-    const meta = { backendName: `gateway-${activeBackendId}`, ...timeRange, topN: filtered.length, exportedAt: new Date() };
+    // Rows were fetched over the stabilized range, so that interval — not the
+    // ticking dashboard range — is what the file actually contains.
+    const dataRange = exportTimeRange ?? timeRange;
+    const name = backendName?.trim() || `gateway-${activeBackendId}`;
+    const meta = {
+      backendName: name, start: dataRange.start, end: dataRange.end,
+      requestedRange: { start: timeRange.start, end: timeRange.end },
+      topN: filtered.length, exportedAt: new Date(),
+    };
     const datasets = buildExportDatasets({
       sources: { devices: filtered, domains: [], ips: [], countries: [], proxies: [], rules: [] },
       enabled: { devices: true, summary: false, domains: false, ips: false, countries: false, proxies: false, rules: false },
-      topN: filtered.length, timeRange, backendName: meta.backendName, locale,
+      topN: filtered.length, timeRange: dataRange, backendName: name, locale,
     });
     downloadBlob(getExportFileName("csv", meta), new Blob([buildExportCsv(datasets, meta, locale)], { type: "text/csv;charset=utf-8" }));
   };

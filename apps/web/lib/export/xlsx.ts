@@ -14,12 +14,14 @@ function toSheetName(label: string, fallback: string, used: Set<string>): string
   const base = (label.replace(INVALID_SHEET_CHARS, " ").trim() || fallback).slice(0, 31);
   let name = base;
   let suffix = 2;
-  while (used.has(name)) {
+  // Excel compares sheet names case-insensitively, so "Phone" and "phone"
+  // collide even though a JS Set treats them as distinct.
+  while (used.has(name.toLowerCase())) {
     const tail = ` ${suffix}`;
     name = `${base.slice(0, 31 - tail.length)}${tail}`;
     suffix += 1;
   }
-  used.add(name);
+  used.add(name.toLowerCase());
   return name;
 }
 
