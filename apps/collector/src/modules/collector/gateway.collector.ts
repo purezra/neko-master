@@ -102,7 +102,7 @@ export class GatewayCollector {
   connect() {
     if (this.isClosing) return;
 
-    console.log(`[Collector:${this.backendId}] Connecting to ${this.url}...`);
+    console.info(`[Collector:${this.backendId}] Connecting to ${this.url}...`);
 
     const headers: Record<string, string> = {
       Origin: this.url
@@ -121,7 +121,7 @@ export class GatewayCollector {
     });
 
     this.ws.on("open", () => {
-      console.log(`[Collector:${this.backendId}] WebSocket connected`);
+      console.info(`[Collector:${this.backendId}] WebSocket connected`);
       this.reconnectAttempts = 0;
       this.startHeartbeat();
     });
@@ -153,7 +153,7 @@ export class GatewayCollector {
 
     this.ws.on("close", (code, reason) => {
       this.stopHeartbeat();
-      console.log(
+      console.info(
         `[Collector:${this.backendId}] WebSocket closed: ${code} ${reason}`,
       );
       if (!this.isClosing) {
@@ -208,7 +208,7 @@ export class GatewayCollector {
       this.maxReconnectInterval,
     );
     this.reconnectAttempts += 1;
-    console.log(
+    console.info(
       `[Collector:${this.backendId}] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})...`,
     );
     this.reconnectTimer = setTimeout(() => {
@@ -228,7 +228,7 @@ export class GatewayCollector {
       this.ws.close();
       this.ws = null;
     }
-    console.log(`[Collector:${this.backendId}] Disconnected`);
+    console.info(`[Collector:${this.backendId}] Disconnected`);
   }
 }
 
@@ -284,7 +284,7 @@ export function createCollector(
       }
     }
     if (cleaned > 0) {
-      console.log(`[Collector:${id}] Cleaned up ${cleaned} stale connections`);
+      console.info(`[Collector:${id}] Cleaned up ${cleaned} stale connections`);
     }
   };
 
@@ -393,7 +393,7 @@ export function createCollector(
       }
 
       if (batchBuffer.shouldLog() && (stats.domains > 0 || stats.rules > 0)) {
-        console.log(
+        console.info(
           `[Collector:${id}] Active: ${activeConnections.size}, Domains: ${stats.domains}, Rules: ${stats.rules}`,
         );
       }

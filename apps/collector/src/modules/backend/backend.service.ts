@@ -66,7 +66,7 @@ export class BackendService {
   startHealthChecks(): void {
     if (this.healthCheckInterval) return;
     
-    console.log('[BackendService] Starting automatic health checks');
+    console.info('[BackendService] Starting automatic health checks');
     
     // Run initial check
     this.runHealthChecks();
@@ -84,7 +84,7 @@ export class BackendService {
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = null;
-      console.log('[BackendService] Stopped automatic health checks');
+      console.info('[BackendService] Stopped automatic health checks');
     }
   }
 
@@ -117,7 +117,7 @@ export class BackendService {
 
           const prevHealth = this.healthStatus.get(backend.id);
           if (prevHealth?.status !== health.status) {
-            console.log(`[BackendService] Health check for ${backend.name}: ${health.status}${health.message ? ` - ${health.message}` : ''}`);
+            console.info(`[BackendService] Health check for ${backend.name}: ${health.status}${health.message ? ` - ${health.message}` : ''}`);
           }
           this.healthStatus.set(backend.id, health);
           this.db.repos.health.writeHealthLog(
@@ -149,7 +149,7 @@ export class BackendService {
         // Only log when status changes or on failure
         const prevHealth = this.healthStatus.get(backend.id);
         if (!result.success || prevHealth?.status !== health.status) {
-          console.log(`[BackendService] Health check for ${backend.name}: ${health.status}${result.message ? ` - ${result.message}` : ''}`);
+          console.info(`[BackendService] Health check for ${backend.name}: ${health.status}${result.message ? ` - ${result.message}` : ''}`);
         }
 
         this.healthStatus.set(backend.id, health);
@@ -340,7 +340,7 @@ export class BackendService {
     // If this is the first backend, automatically set it as active
     if (isFirstBackend) {
       this.db.setActiveBackend(id);
-      console.log(`[API] First backend created, automatically set as active: ${name} (ID: ${id})`);
+      console.info(`[API] First backend created, automatically set as active: ${name} (ID: ${id})`);
     }
     
     return {

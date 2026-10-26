@@ -415,7 +415,7 @@ export class GeoIPService {
         return current;
       }
 
-      console.log(`[GeoIP] MMDB files changed, reloading from ${targetDir}`);
+      console.info(`[GeoIP] MMDB files changed, reloading from ${targetDir}`);
       this.localMmdbReaders = null;
     }
 
@@ -476,7 +476,7 @@ export class GeoIPService {
     };
     this.lastLocalMmdbCheckMs = Date.now();
 
-    console.log(`[GeoIP] Local MMDB loaded from ${mmdbDir}`);
+    console.info(`[GeoIP] Local MMDB loaded from ${mmdbDir}`);
     return this.localMmdbReaders;
   }
 

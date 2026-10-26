@@ -64,7 +64,7 @@ let cleanupService: CleanupService | undefined;
 let lastBackendConfigs: Map<number, BackendConfig> = new Map();
 
 async function main() {
-  console.log('[Main] Starting collector service...');
+  console.info('[Main] Starting collector service...');
 
   const clickHouseConfig = loadClickHouseConfig();
   console.info(`[Main] ClickHouse config: ${formatClickHouseConfigForLog(clickHouseConfig)}`);
@@ -72,7 +72,7 @@ async function main() {
   await ensureClickHouseSchema(clickHouseConfig);
 
   // Initialize database
-  console.log('[Main] Initializing database at:', DB_PATH);
+  console.info('[Main] Initializing database at:', DB_PATH);
   db = new StatsDatabase(DB_PATH);
 
   // Connect realtimeStore to database for agent config persistence
@@ -85,7 +85,7 @@ async function main() {
   geoService = new GeoIPService(db);
 
   // Initialize WebSocket server for real-time updates
-  console.log('[Main] Starting WebSocket server on port', COLLECTOR_WS_PORT);
+  console.info('[Main] Starting WebSocket server on port', COLLECTOR_WS_PORT);
   const statsService = new StatsService(db, realtimeStore);
   wsServer = new StatsWebSocketServer(COLLECTOR_WS_PORT, db, statsService);
   wsServer.start();
@@ -101,7 +101,7 @@ async function main() {
   policySyncService = new SurgePolicySyncService(db);
 
   // Initialize API server
-  console.log('[Main] Starting API server on port', API_PORT);
+  console.info('[Main] Starting API server on port', API_PORT);
   apiServer = new APIServer(
     API_PORT,
     db,
@@ -124,7 +124,7 @@ async function main() {
   apiServer.start();
 
   // Start backend management loop
-  console.log('[Main] Starting backend management loop...');
+  console.info('[Main] Starting backend management loop...');
   manageBackends();
 
   // Check for backend config changes every 5 seconds
@@ -166,7 +166,7 @@ async function manageBackends() {
       const needsRestart = changedFields.length > 0;
 
       if (needsRestart) {
-        console.log(
+        console.info(
           `[Backends] Restarting collector for backend "${backend.name}" (ID: ${backend.id}) — changed: ${changedFields.join(', ')}`,
         );
         stopCollector(backend.id);
@@ -180,7 +180,7 @@ async function manageBackends() {
 
       // Stop collectors for backends that are no longer listening or disabled
       if (existingCollector && (!backend.listening || !backend.enabled)) {
-        console.log(`[Backends] Stopping collector for backend "${backend.name}" (ID: ${backend.id}) - listening=${backend.listening}, enabled=${backend.enabled}`);
+        console.info(`[Backends] Stopping collector for backend "${backend.name}" (ID: ${backend.id}) - listening=${backend.listening}, enabled=${backend.enabled}`);
         stopCollector(backend.id);
       }
     }
@@ -188,7 +188,7 @@ async function manageBackends() {
     // Stop collectors for deleted backends
     for (const [id, collector] of collectors) {
       if (!currentConfigs.has(id)) {
-        console.log(`[Backends] Stopping collector for deleted backend (ID: ${id})`);
+        console.info(`[Backends] Stopping collector for deleted backend (ID: ${id})`);
         stopCollector(id);
       }
     }
@@ -203,16 +203,16 @@ async function manageBackends() {
 // Start a collector for a specific backend
 function startCollector(backend: BackendConfig) {
   if (isAgentBackendUrl(backend.url)) {
-    console.log(`[Collector] Backend "${backend.name}" (ID: ${backend.id}) is agent mode, skip direct pulling`);
+    console.info(`[Collector] Backend "${backend.name}" (ID: ${backend.id}) is agent mode, skip direct pulling`);
     return;
   }
 
   if (collectors.has(backend.id)) {
-    console.log(`[Collector] Backend "${backend.name}" (ID: ${backend.id}) already has a collector running`);
+    console.info(`[Collector] Backend "${backend.name}" (ID: ${backend.id}) already has a collector running`);
     return;
   }
 
-  console.log(`[Collector] Starting ${backend.type || 'clash'} collector for backend "${backend.name}" (ID: ${backend.id}) at ${backend.url}`);
+  console.info(`[Collector] Starting ${backend.type || 'clash'} collector for backend "${backend.name}" (ID: ${backend.id}) at ${backend.url}`);
 
   if (backend.type === 'surge') {
     // Start policy sync service for Surge
@@ -262,7 +262,7 @@ function startCollector(backend: BackendConfig) {
 function stopCollector(backendId: number) {
   const collector = collectors.get(backendId);
   if (collector) {
-    console.log(`[Collector] Stopping collector for backend ID: ${backendId}`);
+    console.info(`[Collector] Stopping collector for backend ID: ${backendId}`);
     if (collector instanceof GatewayCollector) {
       collector.disconnect();
     } else {
@@ -277,11 +277,11 @@ function stopCollector(backendId: number) {
 
 // Graceful shutdown
 async function shutdown() {
-  console.log('[Main] Shutting down...');
+  console.info('[Main] Shutting down...');
 
   // Stop all collectors and policy sync
   for (const [id, collector] of collectors) {
-    console.log(`[Main] Disconnecting collector for backend ID: ${id}`);
+    console.info(`[Main] Disconnecting collector for backend ID: ${id}`);
     if (collector instanceof GatewayCollector) {
       collector.disconnect();
     } else {
@@ -308,7 +308,7 @@ async function shutdown() {
   // Close database
   db?.close();
 
-  console.log('[Main] Shutdown complete');
+  console.info('[Main] Shutdown complete');
   process.exit(0);
 }
 

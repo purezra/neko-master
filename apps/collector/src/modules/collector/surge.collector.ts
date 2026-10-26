@@ -48,7 +48,7 @@ export class SurgeCollector {
   start() {
     if (this.isClosing) return;
 
-    console.log(
+    console.info(
       `[SurgeCollector:${this.backendId}] Starting polling ${this.url}...`
     );
 
@@ -64,7 +64,7 @@ export class SurgeCollector {
         this.onData?.(data);
         // Reset error counter on success
         if (this.consecutiveErrors > 0) {
-          console.log(`[SurgeCollector:${this.backendId}] Recovered after ${this.consecutiveErrors} errors`);
+          console.info(`[SurgeCollector:${this.backendId}] Recovered after ${this.consecutiveErrors} errors`);
           this.consecutiveErrors = 0;
         }
       }
@@ -113,7 +113,7 @@ export class SurgeCollector {
 
         // Wait before retry
         const delay = calculateBackoffDelay(attempt, this.BASE_RETRY_DELAY, this.MAX_RETRY_DELAY);
-        console.log(`[SurgeCollector:${this.backendId}] Retrying in ${delay}ms (attempt ${attempt + 2}/${this.MAX_RETRY_ATTEMPTS})`);
+        console.info(`[SurgeCollector:${this.backendId}] Retrying in ${delay}ms (attempt ${attempt + 2}/${this.MAX_RETRY_ATTEMPTS})`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -152,7 +152,7 @@ export class SurgeCollector {
       clearTimeout(this.pollTimer);
       this.pollTimer = null;
     }
-    console.log(`[SurgeCollector:${this.backendId}] Stopped`);
+    console.info(`[SurgeCollector:${this.backendId}] Stopped`);
   }
 }
 
@@ -293,7 +293,7 @@ export function createSurgeCollector(
     }
     
     if ((cleaned > 0 || completedCleaned > 0) && DEBUG_SURGE) {
-      console.log(`[SurgeCollector:${id}] Cleaned up ${cleaned} stale connections, ${completedCleaned} completed records`);
+      console.info(`[SurgeCollector:${id}] Cleaned up ${cleaned} stale connections, ${completedCleaned} completed records`);
     }
   };
 
@@ -400,7 +400,7 @@ export function createSurgeCollector(
       }
 
       if (batchBuffer.shouldLog() && (stats.domains > 0 || stats.rules > 0)) {
-        console.log(
+        console.info(
           `[SurgeCollector:${id}] Active: ${activeRequests.size}, New: ${newConnectionsCount}, Completed: ${completedConnectionsCount}, Domains: ${stats.domains}, Rules: ${stats.rules}`
         );
         // Reset counters
@@ -533,7 +533,7 @@ export function createSurgeCollector(
           if (currentUpload <= completedInfo.finalUpload && currentDownload <= completedInfo.finalDownload) {
             // No new traffic, skip this request entirely
             if (DEBUG_SURGE) {
-              console.log(`[SurgeCollector:${id}] Skipping completed request: ${req.id}`);
+              console.info(`[SurgeCollector:${id}] Skipping completed request: ${req.id}`);
             }
             continue;
           }
@@ -584,7 +584,7 @@ export function createSurgeCollector(
           newConnectionsCount++;
 
           if (DEBUG_SURGE) {
-            console.log(`[SurgeCollector:${id}] New connection: ${req.id}, domain: ${domain || 'N/A'}, ip: ${ip || 'N/A'}, initial: ↑${currentUpload} ↓${currentDownload}`);
+            console.info(`[SurgeCollector:${id}] New connection: ${req.id}, domain: ${domain || 'N/A'}, ip: ${ip || 'N/A'}, initial: ↑${currentUpload} ↓${currentDownload}`);
           }
 
           // Record initial traffic if non-zero
@@ -646,7 +646,7 @@ export function createSurgeCollector(
             downloadDelta = currentDownload;
             existing.counted = false;
             if (DEBUG_SURGE) {
-              console.log(`[SurgeCollector:${id}] Counter reset detected: ${req.id}`);
+              console.info(`[SurgeCollector:${id}] Counter reset detected: ${req.id}`);
             }
           } else {
             // Normal delta calculation
@@ -669,7 +669,7 @@ export function createSurgeCollector(
             completedConnectionsCount++;
 
             if (DEBUG_SURGE) {
-              console.log(`[SurgeCollector:${id}] Connection completing: ${req.id}, total: ↑${existing.totalUpload + uploadDelta} ↓${existing.totalDownload + downloadDelta}`);
+              console.info(`[SurgeCollector:${id}] Connection completing: ${req.id}, total: ↑${existing.totalUpload + uploadDelta} ↓${existing.totalDownload + downloadDelta}`);
             }
           }
 
@@ -749,7 +749,7 @@ export function createSurgeCollector(
         if (!currentIds.has(reqId)) {
           // Connection disappeared from Surge's recent list
           if (DEBUG_SURGE) {
-            console.log(`[SurgeCollector:${id}] Connection disappeared: ${reqId}, lasted ${Date.now() - trackedReq.firstSeen}ms, total: ↑${trackedReq.totalUpload} ↓${trackedReq.totalDownload}`);
+            console.info(`[SurgeCollector:${id}] Connection disappeared: ${reqId}, lasted ${Date.now() - trackedReq.firstSeen}ms, total: ↑${trackedReq.totalUpload} ↓${trackedReq.totalDownload}`);
           }
           
           // Record completed connection to prevent double counting if it reappears

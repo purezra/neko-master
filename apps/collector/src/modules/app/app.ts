@@ -1383,7 +1383,7 @@ export async function createApp(options: AppOptions) {
   if (autoListen) {
     // Start server
     await app.listen({ port, host: '0.0.0.0' });
-    console.log(`[API] Server running at http://localhost:${port}`);
+    console.info(`[API] Server running at http://localhost:${port}`);
 
     // Start automatic health checks for upstream gateways
     backendService.startHealthChecks();
@@ -1438,7 +1438,7 @@ export class APIServer {
     if (this.app) {
       // Awaiting close runs the onClose hook, which flushes pending agent buffers.
       await this.app.close();
-      console.log('[API] Server stopped');
+      console.info('[API] Server stopped');
     }
   }
 }

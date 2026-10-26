@@ -492,7 +492,7 @@ export class StatsWebSocketServer {
       });
     });
 
-    console.log(`[WebSocket] Server running at ws://0.0.0.0:${this.port}`);
+    console.info(`[WebSocket] Server running at ws://0.0.0.0:${this.port}`);
   }
 
   private parseRange(start?: string, end?: string): ClientRange | null {
@@ -1407,6 +1407,6 @@ export class StatsWebSocketServer {
     this.clients.forEach((info) => info.ws.close());
     this.clients.clear();
     this.wss?.close();
-    console.log('[WebSocket] Server stopped');
+    console.info('[WebSocket] Server stopped');
   }
 }

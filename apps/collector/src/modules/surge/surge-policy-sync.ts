@@ -43,7 +43,7 @@ export class SurgePolicySyncService {
     }, interval);
     
     this.syncTimers.set(backendId, timer);
-    console.log(`[SurgePolicySync:${backendId}] Started, interval: ${interval}ms`);
+    console.info(`[SurgePolicySync:${backendId}] Started, interval: ${interval}ms`);
   }
 
   /**
@@ -54,7 +54,7 @@ export class SurgePolicySyncService {
     if (timer) {
       clearInterval(timer);
       this.syncTimers.delete(backendId);
-      console.log(`[SurgePolicySync:${backendId}] Stopped`);
+      console.info(`[SurgePolicySync:${backendId}] Stopped`);
     }
   }
 
@@ -113,7 +113,7 @@ export class SurgePolicySyncService {
         this.db.updateSurgePolicyCache(backendId, details);
       }
 
-      console.log(`[SurgePolicySync:${backendId}] Synced ${details.length}/${policyGroups.length} policies`);
+      console.info(`[SurgePolicySync:${backendId}] Synced ${details.length}/${policyGroups.length} policies`);
       
       return {
         success: true,

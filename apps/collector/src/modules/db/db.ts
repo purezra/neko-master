@@ -171,7 +171,7 @@ export class StatsDatabase {
     // Migration: Add type column if not exists (for older databases)
     try {
       this.db.exec(`ALTER TABLE backend_configs ADD COLUMN type TEXT DEFAULT 'clash'`);
-      console.log('[DB] Migration: Added type column to backend_configs');
+      console.info('[DB] Migration: Added type column to backend_configs');
     } catch {
       // Column already exists, ignore
     }
@@ -206,7 +206,7 @@ export class StatsDatabase {
     const hasBackendId = tableInfo.some(col => col.name === 'backend_id');
 
     if (!hasBackendId) {
-      console.log('[DB] Migrating from single-backend to multi-backend schema...');
+      console.info('[DB] Migrating from single-backend to multi-backend schema...');
       this.performMigration();
     }
 
@@ -215,7 +215,7 @@ export class StatsDatabase {
     const hasListening = backendInfo.some(col => col.name === 'listening');
 
     if (!hasListening) {
-      console.log('[DB] Adding listening column to backend_configs...');
+      console.info('[DB] Adding listening column to backend_configs...');
       this.db.exec(`ALTER TABLE backend_configs ADD COLUMN listening BOOLEAN DEFAULT 1;`);
     }
 
@@ -223,7 +223,7 @@ export class StatsDatabase {
     const hasType = backendInfo.some(col => col.name === 'type');
 
     if (!hasType) {
-      console.log('[DB] Adding type column to backend_configs...');
+      console.info('[DB] Adding type column to backend_configs...');
       this.db.exec(`ALTER TABLE backend_configs ADD COLUMN type TEXT DEFAULT 'clash';`);
     }
 
@@ -232,7 +232,7 @@ export class StatsDatabase {
     const hasIPChains = ipStatsInfo.some(col => col.name === 'chains');
 
     if (!hasIPChains) {
-      console.log('[DB] Adding chains column to ip_stats...');
+      console.info('[DB] Adding chains column to ip_stats...');
       this.db.exec(`ALTER TABLE ip_stats ADD COLUMN chains TEXT;`);
     }
 
@@ -241,7 +241,7 @@ export class StatsDatabase {
     const hasIPRules = ipStatsInfo2.some(col => col.name === 'rules');
 
     if (!hasIPRules) {
-      console.log('[DB] Adding rules column to ip_stats...');
+      console.info('[DB] Adding rules column to ip_stats...');
       this.db.exec(`ALTER TABLE ip_stats ADD COLUMN rules TEXT;`);
     }
 
@@ -250,7 +250,7 @@ export class StatsDatabase {
     const hasDomainRules = domainStatsInfo.some(col => col.name === 'rules');
 
     if (!hasDomainRules) {
-      console.log('[DB] Adding rules column to domain_stats...');
+      console.info('[DB] Adding rules column to domain_stats...');
       this.db.exec(`ALTER TABLE domain_stats ADD COLUMN rules TEXT;`);
     }
 
@@ -258,14 +258,14 @@ export class StatsDatabase {
     const hasDomainChains = domainStatsInfo.some(col => col.name === 'chains');
 
     if (!hasDomainChains) {
-      console.log('[DB] Adding chains column to domain_stats...');
+      console.info('[DB] Adding chains column to domain_stats...');
       this.db.exec(`ALTER TABLE domain_stats ADD COLUMN chains TEXT;`);
     }
 
     // Migration: Add gateway_latency_ms column to agent_heartbeats
     try {
       this.db.exec(`ALTER TABLE agent_heartbeats ADD COLUMN gateway_latency_ms INTEGER`);
-      console.log('[DB] Migration: Added gateway_latency_ms column to agent_heartbeats');
+      console.info('[DB] Migration: Added gateway_latency_ms column to agent_heartbeats');
     } catch {
       // Column already exists
     }
@@ -273,7 +273,7 @@ export class StatsDatabase {
     // Migration: Add server_latency_ms column to agent_heartbeats
     try {
       this.db.exec(`ALTER TABLE agent_heartbeats ADD COLUMN server_latency_ms INTEGER`);
-      console.log('[DB] Migration: Added server_latency_ms column to agent_heartbeats');
+      console.info('[DB] Migration: Added server_latency_ms column to agent_heartbeats');
     } catch {
       // Column already exists
     }
@@ -281,7 +281,7 @@ export class StatsDatabase {
     // Migration: Add server_latency_ms column to backend_health_logs
     try {
       this.db.exec(`ALTER TABLE backend_health_logs ADD COLUMN server_latency_ms INTEGER`);
-      console.log('[DB] Migration: Added server_latency_ms column to backend_health_logs');
+      console.info('[DB] Migration: Added server_latency_ms column to backend_health_logs');
     } catch {
       // Column already exists
     }
@@ -298,7 +298,7 @@ export class StatsDatabase {
 
     if (minuteCount > 0 || logCount === 0) return;
 
-    console.log(`[DB] Migrating ${logCount} connection_logs rows to aggregation tables...`);
+    console.info(`[DB] Migrating ${logCount} connection_logs rows to aggregation tables...`);
 
     try {
       this.db.exec(`BEGIN TRANSACTION`);
@@ -334,7 +334,7 @@ export class StatsDatabase {
       `);
 
       this.db.exec(`COMMIT`);
-      console.log('[DB] Migration to aggregation tables completed successfully');
+      console.info('[DB] Migration to aggregation tables completed successfully');
     } catch (error) {
       this.db.exec(`ROLLBACK`);
       console.error('[DB] Migration to aggregation tables failed:', error);
@@ -351,7 +351,7 @@ export class StatsDatabase {
 
     if (hourlyDimCount > 0 || minuteDimCount === 0) return;
 
-    console.log(`[DB] Backfilling hourly tables from ${minuteDimCount} minute_dim_stats rows...`);
+    console.info(`[DB] Backfilling hourly tables from ${minuteDimCount} minute_dim_stats rows...`);
 
     try {
       this.db.exec(`BEGIN TRANSACTION`);
@@ -383,7 +383,7 @@ export class StatsDatabase {
 
       this.db.exec(`COMMIT`);
       const hourlyRows = (this.db.prepare(`SELECT COUNT(*) as c FROM hourly_dim_stats`).get() as { c: number }).c;
-      console.log(`[DB] Backfill complete: ${hourlyRows} hourly_dim_stats rows created`);
+      console.info(`[DB] Backfill complete: ${hourlyRows} hourly_dim_stats rows created`);
     } catch (error) {
       this.db.exec(`ROLLBACK`);
       console.error('[DB] Hourly backfill failed:', error);
@@ -593,7 +593,7 @@ export class StatsDatabase {
       this.db.exec(`ALTER TABLE connection_logs_new RENAME TO connection_logs;`);
 
       this.db.exec(`COMMIT;`);
-      console.log('[DB] Migration completed successfully');
+      console.info('[DB] Migration completed successfully');
     } catch (error) {
       this.db.exec(`ROLLBACK;`);
       console.error('[DB] Migration failed:', error);

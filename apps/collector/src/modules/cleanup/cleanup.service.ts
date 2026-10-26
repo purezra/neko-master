@@ -62,7 +62,7 @@ export class CleanupService {
     }
 
     const config = this.getConfig();
-    console.log(`[Cleanup] Starting with retention policy:`, {
+    console.info(`[Cleanup] Starting with retention policy:`, {
       autoCleanup: config.autoCleanup,
       minuteStats: `${config.connectionLogsDays} days`,
       hourlyStats: `${config.hourlyStatsDays} days`,
@@ -86,7 +86,7 @@ export class CleanupService {
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
       this.cleanupTimer = null;
-      console.log('[Cleanup] Stopped');
+      console.info('[Cleanup] Stopped');
     }
   }
 
@@ -100,7 +100,7 @@ export class CleanupService {
     }
 
     if (this.isRunning) {
-      console.log('[Cleanup] Previous cleanup still running, skipping');
+      console.info('[Cleanup] Previous cleanup still running, skipping');
       return;
     }
 
@@ -120,12 +120,12 @@ export class CleanupService {
       // Vacuum database to reclaim space (only if significant data deleted)
       const totalDeleted = logsDeleted + hourlyDeleted;
       if (totalDeleted > 10000) {
-        console.log(`[Cleanup] Deleted ${totalDeleted} records, vacuuming database...`);
+        console.info(`[Cleanup] Deleted ${totalDeleted} records, vacuuming database...`);
         this.db.vacuum();
       }
 
       const duration = Date.now() - startTime;
-      console.log(`[Cleanup] Completed in ${duration}ms: ${logsDeleted} logs, ${hourlyDeleted} hourly records deleted`);
+      console.info(`[Cleanup] Completed in ${duration}ms: ${logsDeleted} logs, ${hourlyDeleted} hourly records deleted`);
     } catch (err) {
       console.error('[Cleanup] Failed:', err);
     } finally {
