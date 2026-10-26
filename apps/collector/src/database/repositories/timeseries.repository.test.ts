@@ -86,4 +86,27 @@ describe('TimeseriesRepository daily trend buckets', () => {
     expect(JSON.stringify(queryTrend(bucketMinutes, 480))).toBe(JSON.stringify(withoutOffset));
     expect(JSON.stringify(queryTrend(bucketMinutes, -210))).toBe(JSON.stringify(withoutOffset));
   });
+
+  // The ClickHouse daily-trend reader buckets minute rows with
+  // intDiv(unix(minute) - start, 86400). Hour-aligned bounds must make the
+  // hourly SQLite path produce the identical buckets and totals.
+  it('keeps domain daily buckets aligned with a minute-grain scan', () => {
+    const rangeStart = '2026-10-07T00:00:00Z';
+    const rangeEnd = '2026-10-10T00:00:00Z';
+    writeTraffic('2026-10-06T23:59:00', 1000, 1000); // before the window
+    writeTraffic('2026-10-07T00:00:00', 1, 2);       // first included minute
+    writeTraffic('2026-10-09T23:59:00', 3, 4);       // last included minute
+    writeTraffic('2026-10-10T00:00:00', 2000, 2000); // exactly at the exclusive end
+
+    const hourly = db.repos.timeseries.getEntityDailyTotals(backendId, 'domain', 'example.com', rangeStart, rangeEnd);
+    // Same bucket formula and bounds as clickhouse.reader.getEntityDailyTotals.
+    const minuteGrain = (db as unknown as { db: import('better-sqlite3').Database }).db.prepare(`SELECT CAST((strftime('%s', minute) - ?) / 86400 AS INTEGER) AS bucket,
+      SUM(upload) AS upload, SUM(download) AS download FROM minute_dim_stats
+      WHERE backend_id = ? AND minute >= ? AND minute < ? AND domain = ? GROUP BY bucket ORDER BY bucket`)
+      .all(Date.parse(rangeStart) / 1000, backendId, rangeStart.slice(0, 16), rangeEnd.slice(0, 16), 'example.com');
+
+    expect(hourly).toEqual(minuteGrain);
+    expect(hourly.reduce((sum, point) => sum + point.upload, 0)).toBe(4);
+    expect(hourly.reduce((sum, point) => sum + point.download, 0)).toBe(6);
+  });
 });

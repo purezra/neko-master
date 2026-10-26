@@ -118,7 +118,7 @@ const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Pr
     },
   } } }, async (request, reply) => {
     const backendId = getBackendId(request, service);
-    if (backendId === null || !service.getDeviceProfiles(backendId)) return reply.status(404).send({ error: 'Backend not found' });
+    if (backendId === null || !service.hasBackend(backendId)) return reply.status(404).send({ error: 'Backend not found' });
     const range = getTimeRange(request, reply, fastify.authService.isShowcaseMode());
     if (!range) return;
     const query = request.query as { dimension: 'proxy' | 'country'; value: string; metric: 'traffic' | 'connections' };
@@ -132,7 +132,7 @@ const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Pr
     },
   } } }, async (request, reply) => {
     const backendId = getBackendId(request, service);
-    if (backendId === null || !service.getDeviceProfiles(backendId)) return reply.status(404).send({ error: 'Backend not found' });
+    if (backendId === null || !service.hasBackend(backendId)) return reply.status(404).send({ error: 'Backend not found' });
     const range = getTimeRange(request, reply, fastify.authService.isShowcaseMode());
     if (!range) return;
     return service.getDomainUsageWithRouting(backendId, (request.query as { domain: string }).domain, range.start!, range.end!);
@@ -205,7 +205,7 @@ const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Pr
     },
   } } }, async (request, reply) => {
     const id = getBackendId(request, service);
-    if (id === null || service.getDeviceProfiles(id) === null) return reply.status(404).send({ error: 'Backend not found' });
+    if (id === null || !service.hasBackend(id)) return reply.status(404).send({ error: 'Backend not found' });
     const range = getTimeRange(request, reply, fastify.authService.isShowcaseMode());
     if (!range) return;
     const { offset, limit, sourceIP, groupName, ungrouped, domain, rule, policyGroup, sortBy, sortOrder } = request.query as DeviceTrafficFilters & { offset: number; limit: number };
@@ -219,14 +219,21 @@ const statsController: FastifyPluginAsync = async (fastify: FastifyInstance): Pr
   } } }, async (request, reply) => {
     if (fastify.authService.isShowcaseMode()) return reply.status(403).send({ error: 'Read-only showcase mode' });
     const id = getBackendId(request, service);
-    if (id === null || service.getDeviceProfiles(id) === null) return reply.status(404).send({ error: 'Backend not found' });
+    if (id === null || !service.hasBackend(id)) return reply.status(404).send({ error: 'Backend not found' });
     const body = request.body as DeviceProfile;
     const sourceIP = body.sourceIP.trim();
     if (!isIP(sourceIP)) return reply.status(400).send({ error: 'Invalid device IP' });
     return service.saveDeviceProfile(id, { sourceIP, displayName: body.displayName.trim(), groupName: body.groupName.trim() });
   });
 
-  fastify.get('/comparison', async (request, reply) => {
+  fastify.get('/comparison', { schema: { querystring: {
+    type: 'object', required: ['start', 'end', 'baselineStart', 'baselineEnd'],
+    properties: {
+      backendId: { type: 'string', pattern: '^[0-9]+$' },
+      start: { type: 'string', minLength: 1, maxLength: 40 }, end: { type: 'string', minLength: 1, maxLength: 40 },
+      baselineStart: { type: 'string', minLength: 1, maxLength: 40 }, baselineEnd: { type: 'string', minLength: 1, maxLength: 40 },
+    },
+  } } }, async (request, reply) => {
     const id = getBackendId(request, service);
     if (id === null) return reply.status(404).send({ error: 'Backend not found' });
     const query = request.query as Record<string, string>;

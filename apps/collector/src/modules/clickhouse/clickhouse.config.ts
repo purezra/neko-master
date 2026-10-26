@@ -305,9 +305,9 @@ ENGINE = Buffer(
 `,
   );
 
-  // Additive upgrade: old parts read as empty raw-rule fields. Upgrade both
-  // destination and buffer before accepting writes with the new columns.
-  for (const table of ['traffic_detail', 'traffic_detail_buffer']) {
+  // Additive upgrade: old parts read as empty raw-rule fields. Upgrade every
+  // table whose DDL declares them before accepting writes with the new columns.
+  for (const table of ['traffic_minute', 'traffic_detail', 'traffic_detail_buffer']) {
     await runClickHouseQuery(config, `ALTER TABLE ${config.database}.${table}
       ADD COLUMN IF NOT EXISTS matched_rule String DEFAULT '',
       ADD COLUMN IF NOT EXISTS rule_payload String DEFAULT ''`);

@@ -41,8 +41,10 @@ type RoutedSource = 'clickhouse' | 'sqlite';
 
 export class StatsService {
   async getEntityUsageWithRouting(backendId: number, dimension: 'proxy' | 'country', value: string, start: string, end: string, metric: 'traffic' | 'connections'): Promise<EntityUsageRow[]> {
-    const countryIPs = dimension === 'country' ? this.db.repos.country.getCachedIPs(value) : [];
-    let rows = this.clickHouseReader.shouldUseForRange(start, end)
+    // Only the ClickHouse path needs the IP set; SQLite joins geoip_cache itself.
+    const useCH = this.clickHouseReader.shouldUseForRange(start, end);
+    const countryIPs = dimension === 'country' && useCH ? this.db.repos.country.getCachedIPs(value) : [];
+    let rows = useCH
       ? await this.clickHouseReader.getEntityUsage(backendId, dimension, value, start, end, metric, countryIPs) : null;
     if (rows === null) {
       this.failIfStrictFallback('entity-usage');
@@ -115,8 +117,9 @@ export class StatsService {
     const totals = new Map(rows.map(row => [row.bucket, row]));
     let devices: EntityDailyTrend['devices'];
     if (includeDevices) {
-      const countryIPs = dimension === 'country' ? this.db.repos.country.getCachedIPs(value) : [];
-      let deviceRows = this.clickHouseReader.shouldUseForRange(start, end)
+      const useCH = this.clickHouseReader.shouldUseForRange(start, end);
+      const countryIPs = dimension === 'country' && useCH ? this.db.repos.country.getCachedIPs(value) : [];
+      let deviceRows = useCH
         ? await this.clickHouseReader.getEntityDeviceDailyTotals(backendId, dimension, value, start, end, countryIPs, sourceIP) : null;
       if (deviceRows === null) {
         this.failIfStrictFallback('entity-device-daily-trend');
@@ -146,8 +149,13 @@ export class StatsService {
     };
   }
 
+  /** Cheap existence check; prefer it over getDeviceProfiles when only null matters. */
+  hasBackend(backendId: number): boolean {
+    return !!this.db.getBackend(backendId);
+  }
+
   getDeviceProfiles(backendId: number): DeviceProfile[] | null {
-    return this.db.getBackend(backendId) ? this.db.repos.device.getProfiles(backendId) : null;
+    return this.hasBackend(backendId) ? this.db.repos.device.getProfiles(backendId) : null;
   }
 
   saveDeviceProfile(backendId: number, profile: DeviceProfile): DeviceProfile {

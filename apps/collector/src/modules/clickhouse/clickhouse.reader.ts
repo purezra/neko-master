@@ -21,6 +21,16 @@ import { usageBreakdownSQL } from '../stats/usage-breakdown.js';
 
 type StatsQuerySource = 'sqlite' | 'clickhouse' | 'auto';
 
+/**
+ * Rows shipped alongside the query as a ClickHouse external table. Country
+ * filters can reference thousands of IPs, which would blow past the server's
+ * max_query_size (default 256 KiB) when inlined into an IN (...) list.
+ */
+type ExternalTable = { name: string; structure: string; rows: Record<string, string>[] };
+
+/** Beyond this many IPs the inline IN (...) list risks max_query_size. */
+const INLINE_IP_LIMIT = 500;
+
 type RuleChainTrafficRow = {
   rule: string;
   chain: string;
@@ -69,13 +79,29 @@ export class ClickHouseReader {
     return { start: this.toDateTime(bucket(start)), end: this.toDateTime(new Date(Date.parse(bucket(end)) + (hourly ? 3600000 : 60000)).toISOString()) };
   }
 
+  /**
+   * Country membership test. Large IP sets travel as an external table so the
+   * statement itself stays small; small ones stay inline to avoid the upload.
+   */
+  private countryFilter(value: string, countryIPs: string[]): { clause: string; external?: ExternalTable } {
+    if (!countryIPs.length) return { clause: value === 'UNKNOWN' ? '1=1' : '0=1' };
+    const operator = value === 'UNKNOWN' ? 'NOT IN' : 'IN';
+    if (countryIPs.length <= INLINE_IP_LIMIT) {
+      return { clause: `ip ${operator} (${countryIPs.map(ip => `'${this.esc(ip)}'`).join(',')})` };
+    }
+    return {
+      clause: `ip ${operator} (SELECT ip FROM country_ips)`,
+      external: { name: 'country_ips', structure: 'ip String', rows: countryIPs.map(ip => ({ ip })) },
+    };
+  }
+
   async getEntityUsage(backendId: number, dimension: 'proxy' | 'country', value: string, start: string, end: string, metric: 'traffic' | 'connections', countryIPs: string[] = []): Promise<EntityUsageRow[] | null> {
     const bounds = this.usageBounds(start, end);
-    const filter = dimension === 'proxy' ? `trimBoth(arrayElement(splitByString(' > ', chain), 1)) = '${this.esc(value)}'`
-      : countryIPs.length ? `ip ${value === 'UNKNOWN' ? 'NOT IN' : 'IN'} (${countryIPs.map(ip => `'${this.esc(ip)}'`).join(',')})` : value === 'UNKNOWN' ? '1=1' : '0=1';
+    const country = dimension === 'country' ? this.countryFilter(value, countryIPs) : null;
+    const filter = dimension === 'proxy' ? `trimBoth(arrayElement(splitByString(' > ', chain), 1)) = '${this.esc(value)}'` : country!.clause;
     const rows = await this.query<Record<string, unknown>>(usageBreakdownSQL(`SELECT source_ip, domain, upload, download, connections
       FROM ${this.config.database}.traffic_detail_buffer WHERE backend_id = ${backendId}
-      AND minute >= toDateTime('${bounds.start}') AND minute < toDateTime('${bounds.end}') AND ${filter}`, metric));
+      AND minute >= toDateTime('${bounds.start}') AND minute < toDateTime('${bounds.end}') AND ${filter}`, metric), country?.external);
     return rows?.map(row => ({ kind: row.kind as EntityUsageRow['kind'], key: String(row.key), totalUpload: Number(row.totalUpload),
       totalDownload: Number(row.totalDownload), totalConnections: Number(row.totalConnections) })) ?? null;
   }
@@ -128,8 +154,8 @@ export class ClickHouseReader {
   }
 
   async getEntityDeviceDailyTotals(backendId: number, dimension: TrafficEntityDimension, value: string, start: string, end: string, countryIPs: string[] = [], sourceIP?: string): Promise<DeviceDailyTrafficTotals[] | null> {
-    const filter = dimension === 'country'
-      ? countryIPs.length ? `ip ${value === 'UNKNOWN' ? 'NOT IN' : 'IN'} (${countryIPs.map(ip => `'${this.esc(ip)}'`).join(',')})` : value === 'UNKNOWN' ? '1=1' : '0=1'
+    const country = dimension === 'country' ? this.countryFilter(value, countryIPs) : null;
+    const filter = country ? country.clause
       : `${dimension === 'proxy' ? "trimBoth(arrayElement(splitByString(' > ', chain), 1))" : 'domain'} = '${this.esc(value)}'`;
     const rows = await this.query<Record<string, unknown>>(`WITH daily AS (
       SELECT intDiv(toInt64(toUnixTimestamp(minute)) - ${Date.parse(start) / 1000}, 86400) AS bucket,
@@ -138,7 +164,7 @@ export class ClickHouseReader {
         AND minute < toDateTime('${this.toDateTime(end)}') AND ${filter} ${sourceIP === undefined ? '' : `AND source_ip = '${this.esc(sourceIP)}'`} GROUP BY bucket, source_ip
       ), top_devices AS (SELECT source_ip FROM daily GROUP BY source_ip ORDER BY SUM(upload + download) DESC, source_ip LIMIT 10)
       SELECT bucket, if(source_ip IN (SELECT source_ip FROM top_devices), toNullable(source_ip), NULL) AS sourceIP,
-        SUM(upload) AS upload, SUM(download) AS download FROM daily GROUP BY bucket, sourceIP ORDER BY bucket, sourceIP`);
+        SUM(upload) AS upload, SUM(download) AS download FROM daily GROUP BY bucket, sourceIP ORDER BY bucket, sourceIP`, country?.external);
     return rows?.map(row => ({ bucket: Number(row.bucket), sourceIP: row.sourceIP === null ? null : String(row.sourceIP),
       upload: Number(row.upload), download: Number(row.download) })) ?? null;
   }
@@ -152,12 +178,12 @@ export class ClickHouseReader {
     const filter = { all: '1=1', increased: 'currentBytes > baselineBytes', decreased: 'currentBytes < baselineBytes', new: 'currentBytes > 0 AND baselineBytes = 0' }[options.filter];
     const predicate = `(${filter}) AND positionCaseInsensitiveUTF8(key, '${this.esc(options.search)}') > 0`;
     const [summary, rows] = await Promise.all([
-      this.query<Record<string, unknown>>(`${cte} SELECT SUM(currentBytes) AS currentBytes, SUM(baselineBytes) AS baselineBytes, countIf(${predicate}) AS total FROM compared`),
+      this.query<Record<string, unknown>>(`${cte} SELECT SUM(currentBytes) AS totalCurrent, SUM(baselineBytes) AS totalBaseline, countIf(${predicate}) AS total FROM compared`),
       this.query<Record<string, unknown>>(`${cte} SELECT key, currentBytes, baselineBytes FROM compared WHERE ${predicate}
         ORDER BY abs(toFloat64(currentBytes) - toFloat64(baselineBytes)) DESC, key ASC LIMIT ${options.limit} OFFSET ${options.offset}`),
     ]);
     if (!summary?.length || !rows) return null;
-    return { total: Number(summary[0].total), currentBytes: Number(summary[0].currentBytes), baselineBytes: Number(summary[0].baselineBytes),
+    return { total: Number(summary[0].total), currentBytes: Number(summary[0].totalCurrent), baselineBytes: Number(summary[0].totalBaseline),
       rows: rows.map(row => ({ key: String(row.key), currentBytes: Number(row.currentBytes), baselineBytes: Number(row.baselineBytes) })) };
   }
 
@@ -1334,13 +1360,29 @@ ORDER BY rule, chain
     return [rule, ...reversed];
   }
 
-  private async query<T>(query: string): Promise<T[] | null> {
+  private async query<T>(query: string, external?: ExternalTable): Promise<T[] | null> {
     if (!this.config.enabled) return null;
     const baseUrl = `${this.config.protocol}://${this.config.host}:${this.config.port}`;
     const authHeader =
       this.config.password.length > 0
         ? `Basic ${Buffer.from(`${this.config.user}:${this.config.password}`).toString('base64')}`
         : '';
+    const body = `${query}\nFORMAT JSON`;
+    // External tables must be multipart parts, so the statement rides along as
+    // the `query` field. The rows are sent as a file part: ClickHouse rejects
+    // plain field values above a few hundred KB ("Field value too long"),
+    // which is exactly the size an IP set reaches.
+    const payload = external
+      ? (() => {
+          const form = new FormData();
+          const rows = external.rows.map(row => JSON.stringify(row)).join('\n');
+          form.append('query', body);
+          form.append(`${external.name}_structure`, external.structure);
+          form.append(`${external.name}_format`, 'JSONEachRow');
+          form.append(external.name, new Blob([rows], { type: 'application/octet-stream' }), external.name);
+          return form;
+        })()
+      : body;
 
     try {
       const response = await fetch(
@@ -1348,10 +1390,10 @@ ORDER BY rule, chain
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'text/plain; charset=utf-8',
+            ...(external ? {} : { 'Content-Type': 'text/plain; charset=utf-8' }),
             ...(authHeader ? { Authorization: authHeader } : {}),
           },
-          body: `${query}\nFORMAT JSON`,
+          body: payload,
           signal: AbortSignal.timeout(this.config.timeoutMs),
         },
       );

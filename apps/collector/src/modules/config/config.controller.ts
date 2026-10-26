@@ -133,14 +133,17 @@ async function resolveClickHouseStorageStats(
 
   try {
     const database = chConfig.database.replace(/'/g, "''");
+    // Runtime writes land in traffic_detail / traffic_agg (via their buffers);
+    // traffic_minute only holds rows imported by the SQLite migration script.
+    const trafficTables = "('traffic_detail', 'traffic_agg', 'traffic_minute')";
     const [rowsText, trafficBytesText, countryBytesText] = await Promise.all([
       runClickHouseTextQuery(
         chConfig,
-        `SELECT toUInt64(COALESCE(sum(rows), 0)) FROM system.parts WHERE active = 1 AND database = '${database}' AND table = 'traffic_minute'`,
+        `SELECT toUInt64(COALESCE(sum(rows), 0)) FROM system.parts WHERE active = 1 AND database = '${database}' AND table = 'traffic_detail'`,
       ),
       runClickHouseTextQuery(
         chConfig,
-        `SELECT toUInt64(COALESCE(sum(bytes_on_disk), 0)) FROM system.parts WHERE active = 1 AND database = '${database}' AND table = 'traffic_minute'`,
+        `SELECT toUInt64(COALESCE(sum(bytes_on_disk), 0)) FROM system.parts WHERE active = 1 AND database = '${database}' AND table IN ${trafficTables}`,
       ),
       runClickHouseTextQuery(
         chConfig,

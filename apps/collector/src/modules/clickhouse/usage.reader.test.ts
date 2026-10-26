@@ -34,4 +34,19 @@ describe('ClickHouse usage details', () => {
     sql = String(fetchMock.mock.calls[1][1]?.body);
     expect(sql).toContain("ip NOT IN ('203.0.113.1')");
   });
+  it('ships large country IP sets as an external table instead of inlining them', async () => {
+    fetchMock.mockImplementation(async () => Response.json({ data: [] }));
+    const ips = Array.from({ length: 5000 }, (_, index) => `10.${index >> 16}.${(index >> 8) & 255}.${index & 255}`);
+    await new ClickHouseReader().getEntityUsage(7, 'country', 'SG', '2026-10-24T16:00:00Z', '2026-10-25T04:00:00Z', 'traffic', ips);
+    const body = fetchMock.mock.calls[0][1]?.body;
+    expect(body).toBeInstanceOf(FormData);
+    const form = body as FormData;
+    expect(String(form.get('query'))).toContain('ip IN (SELECT ip FROM country_ips)');
+    expect(String(form.get('query'))).not.toContain('10.0.0.0');
+    expect(form.get('country_ips_structure')).toBe('ip String');
+    // A Blob (file part), not a string: ClickHouse caps plain field values.
+    const rows = form.get('country_ips');
+    expect(rows).toBeInstanceOf(Blob);
+    expect(String(await (rows as Blob).text()).split('\n')).toHaveLength(ips.length);
+  });
 });
