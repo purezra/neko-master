@@ -9,8 +9,11 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#0B0F19",
-    theme_color: "#0B0F19",
+    // The manifest cannot follow the in-app palette; these are the defaults
+    // from globals.css (dark = Catppuccin Mocha). ThemeAttributeSync updates
+    // the live <meta name="theme-color"> once a palette is selected.
+    background_color: "#1e1e2e",
+    theme_color: "#1e1e2e",
     orientation: "any",
     categories: ["utilities", "network"],
     icons: [

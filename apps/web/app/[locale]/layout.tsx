@@ -41,9 +41,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Defaults from globals.css: :root is the light theme, .dark is Catppuccin
+  // Mocha. ThemeAttributeSync rewrites these once the user picks a palette.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F5F7FA" },
-    { media: "(prefers-color-scheme: dark)", color: "#0B0F19" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f7fa" },
+    { media: "(prefers-color-scheme: dark)", color: "#1e1e2e" },
   ],
   width: "device-width",
   initialScale: 1,

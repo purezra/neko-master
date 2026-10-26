@@ -21,6 +21,17 @@ const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
 
 /**
+ * next-themes' blocking script puts the resolved mode class on <html> before
+ * the first paint, but its React state (`theme`/`systemTheme`) only appears
+ * after mount. Reading the class lets the first post-hydration render resolve
+ * the real palette instead of waiting an extra render on the Mocha fallback.
+ */
+function getDocumentMode(): string | undefined {
+  const classes = document.documentElement.classList;
+  return classes.contains("dark") ? "dark" : classes.contains("light") ? "light" : undefined;
+}
+
+/**
  * Active color palette + chart series colors.
  *
  * `resolvedTheme` is undefined until next-themes hydrates; palette lookups
@@ -33,7 +44,11 @@ export function useThemePalette(): ThemePaletteState {
   return useMemo(() => {
     // SSR and the first hydration render must agree, even when localStorage
     // already contains a light theme. Resolve the saved theme after hydration.
-    const palette = resolveThemePalette(hydrated ? forcedTheme ?? theme : undefined, hydrated ? systemTheme : undefined);
+    const selected = hydrated ? forcedTheme ?? theme : undefined;
+    // "system" needs the OS mode; next-themes fills `systemTheme` in an effect,
+    // so fall back to the class its blocking script already applied.
+    const system = hydrated ? systemTheme ?? getDocumentMode() : undefined;
+    const palette = resolveThemePalette(selected, system);
     return {
       palette,
       isDark: palette.mode === "dark",
