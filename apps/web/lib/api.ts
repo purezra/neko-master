@@ -1,4 +1,5 @@
 import type {
+  DiagnosticServiceId,
   DiagnosticConnectionsPage,
   DiagnosticProxies,
   DiagnosticHealthState,
@@ -570,8 +571,8 @@ export const api = {
   getGatewayProxies: (backendId?: number) =>
     fetchJson<GatewayProxiesResponse>(buildUrl(`${API_BASE}/gateway/proxies`, { backendId })),
 
-  getDiagnosticConnections: (backendId: number, minutes: number, search: string, offset: number) =>
-    fetchJson<DiagnosticConnectionsPage>(buildUrl(`${API_BASE}/gateway/diagnostics/connections`, { backendId, minutes, search, offset })),
+  getDiagnosticConnections: (backendId: number, minutes: number, search: string, offset: number, service?: DiagnosticServiceId) =>
+    fetchJson<DiagnosticConnectionsPage>(buildUrl(`${API_BASE}/gateway/diagnostics/connections`, { backendId, minutes, search, offset, service })),
   getDiagnosticProxies: (backendId: number) =>
     fetchJson<DiagnosticProxies>(buildUrl(`${API_BASE}/gateway/diagnostics/proxies`, { backendId })),
   selectDiagnosticProxy: (backendId: number, group: string, name: string) =>

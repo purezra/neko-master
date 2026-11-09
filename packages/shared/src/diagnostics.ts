@@ -1,4 +1,11 @@
 /** Short-lived gateway observations, independent of durable traffic statistics. */
+export const DIAGNOSTIC_SERVICE_IDS = [
+  'chatgpt', 'gemini', 'grok', 'perplexity', 'telegram', 'twitter', 'claude',
+  'workbuddy', 'cursor', 'opencode', 'github', 'tabbit', 'alma', 'muse', 'cline',
+  'downloads', 'cloudflare', 'youtube',
+] as const;
+export type DiagnosticServiceId = typeof DIAGNOSTIC_SERVICE_IDS[number];
+
 export interface DiagnosticConnection {
   id: string;
   host: string;
@@ -15,8 +22,21 @@ export interface DiagnosticConnection {
   download: number;
   start: string;
   firstSeen: number;
+  firstUploadAt?: number;
   lastSeen: number;
   active: boolean;
+}
+
+export type DiagnosticConnectionStatus = 'stale' | 'rejected' | 'responded' | 'waiting' | 'suspectedTimeout' | 'noResponse';
+
+/** Snapshot evidence cannot establish whether an application or website succeeded. */
+export function getDiagnosticConnectionStatus(connection: DiagnosticConnection, sampledAt: number | null, now: number): DiagnosticConnectionStatus {
+  if (sampledAt === null || now - sampledAt > 15_000) return 'stale';
+  if (connection.chains.some(hop => ['REJECT', 'REJECT-DROP'].includes(hop.toUpperCase()))) return 'rejected';
+  if (connection.download > 0) return 'responded';
+  if (!connection.active) return 'noResponse';
+  if (connection.network.toLowerCase() === 'tcp' && connection.upload > 0 && connection.lastSeen - (connection.firstUploadAt ?? connection.firstSeen) >= 10_000) return 'suspectedTimeout';
+  return 'waiting';
 }
 
 export interface DiagnosticConnectionsPage {

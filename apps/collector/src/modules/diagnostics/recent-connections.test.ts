@@ -42,6 +42,13 @@ describe('RecentConnections', () => {
     expect(store.query(2, 1, '', 0, 1_000_000).total).toBe(1);
   });
 
+  it('starts the response wait when upload is first observed, not when an idle connection was seen', () => {
+    const store = new RecentConnections();
+    store.observe(1, [connection()], 1_000_000);
+    store.observe(1, [connection('one', { upload: 100 })], 1_060_000);
+    expect(store.query(1, 1, '', 0, 1_060_001).connections[0]).toMatchObject({ firstSeen: 1_000_000, firstUploadAt: 1_060_000 });
+  });
+
   it('bounds memory, exposes eviction and paginates after searching', () => {
     const store = new RecentConnections();
     store.observe(1, Array.from({ length: 10_050 }, (_, index) => connection(`id-${index}`)), 1_000_000);

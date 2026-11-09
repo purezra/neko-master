@@ -1,5 +1,6 @@
 import type { GeoIPInfo } from "./geo-ip-utils.js";
-export type { DiagnosticConnection, DiagnosticConnectionsPage, DiagnosticProxy, DiagnosticNode, DiagnosticProxies, DiagnosticHealthResult, DiagnosticHealthState } from './diagnostics.js';
+export { DIAGNOSTIC_SERVICE_IDS, getDiagnosticConnectionStatus } from './diagnostics.js';
+export type { DiagnosticServiceId, DiagnosticConnectionStatus, DiagnosticConnection, DiagnosticConnectionsPage, DiagnosticProxy, DiagnosticNode, DiagnosticProxies, DiagnosticHealthResult, DiagnosticHealthState } from './diagnostics.js';
 
 // Gateway Connection Metadata
 export interface ConnectionMetadata {

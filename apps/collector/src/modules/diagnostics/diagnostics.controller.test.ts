@@ -60,6 +60,23 @@ describe('gateway diagnostics API', () => {
     expect((await app.inject(url('connections'))).json().total).toBe(0);
   });
 
+  it('filters by service before pagination, combining service, text and backend scope', async () => {
+    const observations = Array.from({ length: 125 }, (_, index) => ({
+      id: `match-${index}`, metadata: { host: index < 120 ? 'api.telegram.org' : 'chatgpt.com', sourceIP: '192.168.1.2' },
+      chains: ['DIRECT'], upload: 1, download: 0,
+    } as Connection));
+    store.recentConnections.observe(backendId, observations);
+    const first = (await app.inject(url('connections', '&service=telegram'))).json();
+    expect(first.total).toBe(120);
+    expect(first.connections).toHaveLength(100);
+    expect((await app.inject(url('connections', '&service=telegram&offset=100'))).json().connections).toHaveLength(20);
+    expect((await app.inject(url('connections', '&service=telegram&search=chatgpt'))).json().total).toBe(0);
+    expect((await app.inject(url('connections', '&service=chatgpt'))).json().total).toBe(5);
+    expect((await app.inject(url('connections', '&service=not-a-service'))).statusCode).toBe(400);
+    const another = createTestBackend(db, 'another');
+    expect((await app.inject(`/api/gateway/diagnostics/connections?backendId=${another}&service=telegram`)).json().total).toBe(0);
+  });
+
   it('reads the loaded configuration with server-side credentials and a timeout', async () => {
     expect((await app.inject(url('proxies'))).json()).toMatchObject({ proxies, canControl: true, nodes: [{ name: 'HK / 01' }, { name: 'JP' }] });
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:9090/proxies', expect.objectContaining({

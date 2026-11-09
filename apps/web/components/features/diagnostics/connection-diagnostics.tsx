@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Activity, ArrowRight, Check, HeartPulse, RefreshCw, Search, Unplug } from "lucide-react";
 import { toast } from "sonner";
-import type { DiagnosticProxy } from "@neko-master/shared";
+import { DIAGNOSTIC_SERVICE_IDS, getDiagnosticConnectionStatus } from "@neko-master/shared";
+import type { DiagnosticProxy, DiagnosticServiceId } from "@neko-master/shared";
 import { api } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
 import { diagnosticKeys } from "@/lib/stats-query-keys";
@@ -22,6 +23,18 @@ function searchTerm(value: string): string {
   try { return new URL(value).hostname; } catch { return value.trim(); }
 }
 
+function selectedLeaf(name: string, proxies: Record<string, DiagnosticProxy>): string | undefined {
+  const visited = new Set<string>();
+  while (!visited.has(name)) {
+    visited.add(name);
+    const proxy = proxies[name];
+    if (!proxy?.all) return name;
+    if (!proxy.now) return undefined;
+    name = proxy.now;
+  }
+  return undefined;
+}
+
 export function ConnectionDiagnostics({ backendId, autoRefresh }: { backendId?: number; autoRefresh: boolean }) {
   const t = useTranslations("diagnostics");
   const queryClient = useQueryClient();
@@ -29,14 +42,17 @@ export function ConnectionDiagnostics({ backendId, autoRefresh }: { backendId?: 
   const [minutes, setMinutes] = useState(3);
   const [minutesInput, setMinutesInput] = useState("3");
   const [search, setSearch] = useState("");
+  const [service, setService] = useState<DiagnosticServiceId>();
+  const [moreServices, setMoreServices] = useState(false);
   const [offset, setOffset] = useState(0);
   const [nodeSearch, setNodeSearch] = useState("");
   const [nodePage, setNodePage] = useState(0);
   const [focusedGroup, setFocusedGroup] = useState<string | null>(null);
+  const [policyChoices, setPolicyChoices] = useState<string[]>([]);
   const validMinutes = /^[1-5]$/.test(minutesInput);
   const connections = useQuery({
-    queryKey: diagnosticKeys.connections(backendId ?? 0, minutes, searchTerm(search), offset),
-    queryFn: () => api.getDiagnosticConnections(backendId!, minutes, searchTerm(search), offset),
+    queryKey: diagnosticKeys.connections(backendId ?? 0, minutes, searchTerm(search), offset, service),
+    queryFn: () => api.getDiagnosticConnections(backendId!, minutes, searchTerm(search), offset, service),
     enabled: !!backendId && tab === "connections", refetchInterval: autoRefresh ? 2000 : false, retry: false,
   });
   const proxies = useQuery({
@@ -116,7 +132,7 @@ export function ConnectionDiagnostics({ backendId, autoRefresh }: { backendId?: 
     {unsupported ? <Card><CardContent className="py-8 text-sm text-muted-foreground">{t("unsupported")}</CardContent></Card> : <Tabs value={tab} onValueChange={setTab}>
       <TabsList><TabsTrigger value="connections">{t("connections")}</TabsTrigger><TabsTrigger value="nodes">{t("nodes")}</TabsTrigger></TabsList>
       <TabsContent value="connections" className="mt-5 space-y-4">
-        <Card><CardContent className="space-y-3 pt-6">
+        <Card><CardContent className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-48 flex-1"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
               <Input className="pl-9" value={search} maxLength={200} onChange={event => { setSearch(event.target.value); setOffset(0); }} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} /></div>
@@ -124,8 +140,19 @@ export function ConnectionDiagnostics({ backendId, autoRefresh }: { backendId?: 
               onChange={event => { const value = event.target.value; setMinutesInput(value); if (/^[1-5]$/.test(value)) { setMinutes(Number(value)); setOffset(0); } }} />{t("minutes")}</label>
             <Badge variant="outline">{t(autoRefresh ? "live" : "paused")}</Badge>
           </div>
+          <div role="group" aria-label={t("quickFilters")} className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs text-muted-foreground">{t("quickFilters")}</span>
+            <Button size="sm" variant={service === undefined ? "default" : "outline"} className="h-7 rounded-full px-3 text-xs" aria-pressed={service === undefined} onClick={() => { setService(undefined); setOffset(0); }}>{t("allServices")}</Button>
+            {DIAGNOSTIC_SERVICE_IDS.filter((id, index) => index < 7 || moreServices || id === service).map(id =>
+              <Button key={id} size="sm" variant={service === id ? "default" : "outline"} className="h-7 rounded-full px-3 text-xs" aria-pressed={service === id}
+                onClick={() => { setService(service === id ? undefined : id); setOffset(0); }}>{t(`services.${id}`)}</Button>)}
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" aria-expanded={moreServices} onClick={() => setMoreServices(value => !value)}>{t(moreServices ? "fewerServices" : "moreServices")}</Button>
+          </div>
           {!validMinutes && <p className="text-sm text-destructive">{t("invalidMinutes")}</p>}
-          <p className="text-xs leading-relaxed text-muted-foreground">{t("historyHint")}</p>
+          <details className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+            <summary className="cursor-pointer">{t("filterHelp")}</summary>
+            <p>{t("quickFilterHint")}</p><p>{t("responseHint")}</p><p>{t("historyHint")}</p>
+          </details>
           <p className="text-xs text-muted-foreground">{t("coverage", { since: connections.data?.observingSince ? new Date(connections.data.observingSince).toLocaleTimeString() : "—", sampled: sampledAt ? new Date(sampledAt).toLocaleTimeString() : "—" })}</p>
           {stale && !connections.isPending && <p role="status" className="text-sm text-destructive">{t("stale")}</p>}
           {connections.data?.truncated && <p role="status" className="text-sm text-destructive">{t("truncated")}</p>}
@@ -135,17 +162,26 @@ export function ConnectionDiagnostics({ backendId, autoRefresh }: { backendId?: 
             <div className="flex items-center gap-2"><Button size="sm" variant="outline" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - 100))}>{t("previous")}</Button>
               <span>{t("page", { page: offset / 100 + 1 })}</span><Button size="sm" variant="outline" disabled={offset + 100 >= (connections.data?.total ?? 0)} onClick={() => setOffset(value => value + 100)}>{t("next")}</Button></div></div>
           {!connections.data?.connections.length ? <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">{t("empty")}</CardContent></Card> :
-            <div className="space-y-3">{connections.data.connections.map(connection => <Card key={connection.id}>
+            <div className="space-y-3">{connections.data.connections.map(connection => {
+              const responseStatus = getDiagnosticConnectionStatus(connection, sampledAt ?? null, connections.dataUpdatedAt);
+              const selectableGroups = [...connection.chains].reverse().filter(name => proxyMap[name]?.type === "Selector" && proxyMap[name]?.all?.length);
+              const leafName = connection.chains[0];
+              const leafNodes = allNodes.filter(node => node.name === leafName);
+              const leafNode = leafNodes.length === 1 ? leafNodes[0] : undefined;
+              return <Card key={connection.id}>
               <CardContent className="space-y-3 py-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1"><p className="break-all font-medium">{connection.host || connection.destinationIP || t("unknownHost")}{connection.destinationPort && <span className="text-muted-foreground">:{connection.destinationPort}</span>}</p>
                     <p className="mt-1 break-all text-xs text-muted-foreground">{connection.sourceIP}:{connection.sourcePort} · {connection.network.toUpperCase()} {connection.process && `· ${connection.process}`} {connection.host && connection.destinationIP && `· ${connection.destinationIP}`}</p></div>
-                  <Badge variant={connection.active && !stale ? "default" : "secondary"}>{t(stale ? "unknownState" : connection.active ? "active" : "ended")}</Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className={responseStatus === "responded" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : responseStatus === "rejected" || responseStatus === "suspectedTimeout" || responseStatus === "noResponse" ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300" : undefined}>{t(`response.${responseStatus}`)}</Badge>
+                    <Badge variant="outline">{t(stale ? "unknownState" : connection.active ? "active" : "ended")}</Badge>
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1 text-sm"><span className="mr-1 text-xs text-muted-foreground">{t("route")}</span>
                   {connection.chains.length ? [...connection.chains].reverse().map((hop, index) => <span key={`${index}-${hop}`} className="inline-flex max-w-full items-center gap-1">
                     {index > 0 && <ArrowRight className="size-3 shrink-0 text-muted-foreground" />}
-                    <Button variant="outline" size="sm" className="h-auto max-w-full whitespace-normal break-all py-1 text-xs" disabled={!proxyMap[hop]?.all} onClick={() => setFocusedGroup(hop)}>{hop}</Button>
+                    <Button variant="outline" size="sm" className="h-auto max-w-full whitespace-normal break-all py-1 text-xs" disabled={!proxyMap[hop]?.all} onClick={() => { setPolicyChoices([]); setFocusedGroup(hop); }}>{hop}</Button>
                   </span>) : <span className="text-muted-foreground">{t("noRoute")}</span>}
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3 text-xs text-muted-foreground">
@@ -153,10 +189,15 @@ export function ConnectionDiagnostics({ backendId, autoRefresh }: { backendId?: 
                     <span>↑ {formatBytes(connection.upload)} · ↓ {formatBytes(connection.download)}</span>
                     <span>{t("lastSeen")}: {new Date(connection.lastSeen).toLocaleTimeString()}</span>
                     {connection.download === 0 && <Badge variant="outline">{t("noDownload")}</Badge>}</div>
-                  {connection.active && <Button size="sm" variant="ghost" disabled={!canControl || close.isPending || stale} onClick={() => close.mutate(connection.id)}><Unplug className="size-3" />{t("disconnect")}</Button>}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {leafNode && <Badge variant="outline">{t("nodeHealth")}: {latency(leafNode.id, leafNode)}</Badge>}
+                    {leafNode && <Button size="sm" variant="ghost" disabled={!canControl || testing} onClick={() => health.mutate(leafNode.id)}><HeartPulse className="size-3" />{t("testNode")}</Button>}
+                    {selectableGroups.length > 0 && <Button size="sm" variant="outline" disabled={!canControl} onClick={() => { setPolicyChoices(selectableGroups); setFocusedGroup(selectableGroups[0]); }}>{t("changeNode")}</Button>}
+                    {connection.active && <Button size="sm" variant="ghost" disabled={!canControl || close.isPending || stale} onClick={() => close.mutate(connection.id)}><Unplug className="size-3" />{t("disconnect")}</Button>}
+                  </div>
                 </div>
               </CardContent>
-            </Card>)}</div>}
+            </Card>; })}</div>}
         </>}
         {proxies.isError && errorView(() => void proxies.refetch())}
       </TabsContent>
@@ -187,7 +228,29 @@ export function ConnectionDiagnostics({ backendId, autoRefresh }: { backendId?: 
     </Tabs>}
     <Dialog open={focusedGroup !== null} onOpenChange={open => { if (!open) setFocusedGroup(null); }}><DialogContent className="max-h-[85vh] overflow-y-auto"><DialogHeader>
       <DialogTitle className="break-all">{focusedGroup}</DialogTitle><DialogDescription>{t("switchHint")}</DialogDescription>
-    </DialogHeader>{focusedGroup && proxyMap[focusedGroup] && groupEditor(focusedGroup, proxyMap[focusedGroup])}
+    </DialogHeader>
+      {policyChoices.length > 1 && <Select value={focusedGroup ?? undefined} onValueChange={setFocusedGroup}>
+        <SelectTrigger className="w-full" aria-label={t("routeGroup")}><SelectValue /></SelectTrigger>
+        <SelectContent>{policyChoices.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
+      </Select>}
+      {focusedGroup && proxyMap[focusedGroup] && groupEditor(focusedGroup, proxyMap[focusedGroup])}
+      {focusedGroup && proxyMap[focusedGroup]?.type === "Selector" && <div className="space-y-3">
+        <p className="text-sm font-medium">{t("alternatives")}</p>
+        <div className="grid gap-2 sm:grid-cols-2">{proxyMap[focusedGroup].all?.map(member => {
+          const leaf = selectedLeaf(member, proxyMap);
+          const matchingNodes = allNodes.filter(node => node.name === leaf);
+          const node = matchingNodes.length === 1 ? matchingNodes[0] : undefined;
+          const current = proxyMap[focusedGroup].now === member;
+          return <div key={member} className="space-y-2 rounded-lg border p-3">
+            <p className="break-all text-sm font-medium">{member}</p>
+            {leaf && leaf !== member && <p className="break-all text-xs text-muted-foreground">{t("viaNode", { node: leaf })}</p>}
+            <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{node ? latency(node.id, node) : t("untested")}</Badge>
+              <Button size="sm" variant={current ? "secondary" : "outline"} disabled={!canControl || current || selection.isPending} onClick={() => selection.mutate({ group: focusedGroup, name: member })}>{t(current ? "selected" : "switchTo")}</Button>
+              {node && <Button size="sm" variant="ghost" disabled={!canControl || testing} onClick={() => health.mutate(node.id)}>{t("testNode")}</Button>}
+            </div>
+          </div>;
+        })}</div>
+      </div>}
       <p className="flex gap-2 text-xs text-muted-foreground"><Check className="size-4 shrink-0" />{t("routeHint")}</p>
     </DialogContent></Dialog>
   </div>;

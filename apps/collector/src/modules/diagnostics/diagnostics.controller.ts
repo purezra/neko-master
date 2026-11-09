@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync, FastifyError } from 'fastify';
-import { isAgentBackendUrl } from '@neko-master/shared';
+import { DIAGNOSTIC_SERVICE_IDS, isAgentBackendUrl } from '@neko-master/shared';
+import type { DiagnosticServiceId } from '@neko-master/shared';
 import { DiagnosticsService } from './diagnostics.service.js';
 
 export const diagnosticsController: FastifyPluginAsync = async (fastify) => {
@@ -10,6 +11,7 @@ export const diagnosticsController: FastifyPluginAsync = async (fastify) => {
     properties: {
       backendId: { type: 'integer', minimum: 1 }, minutes: { type: 'integer', minimum: 1, maximum: 5, default: 3 },
       search: { type: 'string', maxLength: 200 }, offset: { type: 'integer', minimum: 0, default: 0 },
+      service: { type: 'string', enum: [...DIAGNOSTIC_SERVICE_IDS] },
     },
   };
   fastify.addHook('preHandler', async (request, reply) => {
@@ -30,8 +32,8 @@ export const diagnosticsController: FastifyPluginAsync = async (fastify) => {
     return reply.code(502).send({ error: 'Failed to reach gateway' });
   });
   fastify.get('/connections', { schema: { querystring: querySchema } }, async (request) => {
-    const { backendId, minutes, search, offset } = request.query as { backendId: number; minutes: number; search?: string; offset: number };
-    return fastify.realtimeStore.recentConnections.query(backendId, minutes, search, offset);
+    const { backendId, minutes, search, offset, service } = request.query as { backendId: number; minutes: number; search?: string; offset: number; service?: DiagnosticServiceId };
+    return fastify.realtimeStore.recentConnections.query(backendId, minutes, search, offset, Date.now(), service);
   });
   fastify.get('/proxies', { schema: { querystring: querySchema } }, async (request) => {
     const { backendId } = request.query as { backendId: number };

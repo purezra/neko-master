@@ -1,4 +1,5 @@
-import type { Connection, DiagnosticConnection, DiagnosticConnectionsPage } from '@neko-master/shared';
+import type { Connection, DiagnosticConnection, DiagnosticConnectionsPage, DiagnosticServiceId } from '@neko-master/shared';
+import { matchesDiagnosticService } from './service-filter.js';
 
 const RETENTION_MS = 5 * 60_000;
 const MAX_CONNECTIONS = 10_000;
@@ -27,6 +28,7 @@ export class RecentConnections {
       if (!connection || typeof connection.id !== 'string' || !connection.id) continue;
       const metadata = connection.metadata ?? {};
       const previous = state.rows.get(connection.id);
+      const sameConnection = previous?.start === (connection.start || '');
       // Delete/reinsert so the oldest observations can be evicted in O(1).
       state.rows.delete(connection.id);
       state.rows.set(connection.id, {
@@ -38,7 +40,8 @@ export class RecentConnections {
         chains: Array.isArray(connection.chains) ? [...connection.chains] : [],
         rule: connection.rule || '', rulePayload: connection.rulePayload || '',
         upload: connection.upload || 0, download: connection.download || 0, start: connection.start || '',
-        firstSeen: previous?.start === (connection.start || '') ? previous.firstSeen : now,
+        firstSeen: sameConnection ? previous.firstSeen : now,
+        firstUploadAt: connection.upload > 0 ? (sameConnection ? previous.firstUploadAt ?? now : now) : undefined,
         lastSeen: now, active: true,
       });
       if (state.rows.size > MAX_CONNECTIONS) {
@@ -48,7 +51,7 @@ export class RecentConnections {
     }
   }
 
-  query(backendId: number, minutes: number, search = '', offset = 0, now = Date.now()): DiagnosticConnectionsPage {
+  query(backendId: number, minutes: number, search = '', offset = 0, now = Date.now(), service?: DiagnosticServiceId): DiagnosticConnectionsPage {
     const state = this.backends.get(backendId);
     if (!state) return { connections: [], total: 0, sampledAt: null, observingSince: null, truncated: false };
     const term = search.trim().toLowerCase();
@@ -56,6 +59,7 @@ export class RecentConnections {
     for (const [id, row] of state.rows) {
       if (row.lastSeen < now - RETENTION_MS) { state.rows.delete(id); continue; }
       if (row.lastSeen < now - minutes * 60_000) continue;
+      if (service && !matchesDiagnosticService(row, service)) continue;
       if (term && ![row.host, row.destinationIP, row.sourceIP, row.process, row.rule, row.rulePayload, ...row.chains]
         .some(value => value.toLowerCase().includes(term))) continue;
       matches.push(row);
