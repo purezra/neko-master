@@ -10,6 +10,7 @@ import type {
 } from '@neko-master/shared';
 import type { StatsDatabase } from '../db/db.js';
 import { buildRuleName } from '../../shared/utils/rule-name.js';
+import { RecentConnections } from '../diagnostics/recent-connections.js';
 
 type SummaryDelta = {
   upload: number;
@@ -230,6 +231,7 @@ export type AgentPolicyState = {
 };
 
 export class RealtimeStore {
+  readonly recentConnections = new RecentConnections();
   private clearedListeners = new Set<(backendId: number) => void>();
   private agentConfigByBackend = new Map<number, AgentGatewayConfig>();
   private agentPolicyStateByBackend = new Map<number, AgentPolicyState>();
@@ -1469,6 +1471,7 @@ export class RealtimeStore {
   }
 
   clearBackend(backendId: number): void {
+    this.recentConnections.clear(backendId);
     this.clearTraffic(backendId);
     this.clearCountries(backendId);
   }

@@ -17,6 +17,7 @@ import {
   Smartphone,
   ShieldAlert,
   HeartPulse,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AboutDialog } from "@/components/common/about-dialog";
@@ -42,6 +43,7 @@ const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0";
 
 const NAV_ITEMS = [
   { id: "overview", icon: LayoutDashboard },
+  { id: "diagnostics", icon: Activity },
   { id: "comparison", icon: GitCompareArrows },
   { id: "rules", icon: Route },
   { id: "domains", icon: Globe },

@@ -7,6 +7,7 @@ const ROOT = process.cwd();
 
 const FRONTEND_API_FILE = path.join(ROOT, 'apps/web/lib/api.ts');
 const BACKEND_SOURCES = [
+  { file: 'apps/collector/src/modules/diagnostics/diagnostics.controller.ts', prefix: '/api/gateway/diagnostics' },
   { file: 'apps/collector/src/modules/app/app.ts', prefix: '' },
   { file: 'apps/collector/src/modules/config/config.controller.ts', prefix: '/api/db' },
   { file: 'apps/collector/src/modules/auth/auth.controller.ts', prefix: '/api/auth' },

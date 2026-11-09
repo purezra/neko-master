@@ -1,4 +1,7 @@
 import type {
+  DiagnosticConnectionsPage,
+  DiagnosticProxies,
+  DiagnosticHealthState,
   StatsSummary,
   DomainStats,
   DomainUsageRow,
@@ -566,6 +569,19 @@ export const api = {
 
   getGatewayProxies: (backendId?: number) =>
     fetchJson<GatewayProxiesResponse>(buildUrl(`${API_BASE}/gateway/proxies`, { backendId })),
+
+  getDiagnosticConnections: (backendId: number, minutes: number, search: string, offset: number) =>
+    fetchJson<DiagnosticConnectionsPage>(buildUrl(`${API_BASE}/gateway/diagnostics/connections`, { backendId, minutes, search, offset })),
+  getDiagnosticProxies: (backendId: number) =>
+    fetchJson<DiagnosticProxies>(buildUrl(`${API_BASE}/gateway/diagnostics/proxies`, { backendId })),
+  selectDiagnosticProxy: (backendId: number, group: string, name: string) =>
+    fetchJson<{ ok: boolean }>(buildUrl(`${API_BASE}/gateway/diagnostics/selection`, { backendId }), "PUT", { group, name }),
+  checkDiagnosticHealth: (backendId: number, nodeId?: string) =>
+    fetchJson<DiagnosticHealthState>(buildUrl(`${API_BASE}/gateway/diagnostics/healthcheck`, { backendId }), "POST", nodeId ? { nodeId } : {}),
+  getDiagnosticHealth: (backendId: number) =>
+    fetchJson<DiagnosticHealthState>(buildUrl(`${API_BASE}/gateway/diagnostics/healthcheck`, { backendId })),
+  closeDiagnosticConnection: (backendId: number, id: string) =>
+    fetchJson<{ ok: boolean }>(buildUrl(`${API_BASE}/gateway/diagnostics/connection`, { backendId }), "DELETE", { id }),
     
   // Backend management
   getBackends: () =>

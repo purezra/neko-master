@@ -443,6 +443,7 @@ export function createCollector(
       }
 
       const now = Date.now();
+      realtimeStore.recentConnections.observe(id, data.connections, now);
       const currentIds = new Set(
         data.connections.map((c) => c?.id).filter(Boolean),
       );

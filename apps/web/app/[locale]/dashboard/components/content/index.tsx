@@ -9,6 +9,7 @@ import { BarChart3, Link2 } from "lucide-react";
 import { StatsCards, TopDomainsChart } from "@/components/features/stats";
 import { OverviewTab } from "@/components/overview";
 import { InteractiveProxyStats } from "@/components/features/proxies";
+import { ConnectionDiagnostics } from "@/components/features/diagnostics/connection-diagnostics";
 import { DeviceView } from "@/components/features/devices";
 import { InteractiveRuleStats } from "@/components/features/rules";
 import { HealthContent } from "@/components/features/health";
@@ -357,6 +358,8 @@ export function Content({
 }: ContentProps) {
   const renderContent = () => {
     switch (activeTab) {
+      case "diagnostics":
+        return <ConnectionDiagnostics key={activeBackendId} backendId={activeBackendId} autoRefresh={autoRefresh} />;
       case "overview":
         return (
           <OverviewContent

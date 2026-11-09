@@ -368,6 +368,9 @@ export class BackendService {
     const nextAgentMode = isAgentBackendUrl(nextUrl);
 
     this.db.updateBackend(id, input);
+    if (nextUrl !== existing.url || (input.type && input.type !== existing.type)) {
+      this.realtimeStore.recentConnections.clear(id);
+    }
 
     if (prevAgentMode && !nextAgentMode) {
       this.db.clearAgentHeartbeat(id);
