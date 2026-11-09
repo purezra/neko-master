@@ -1,4 +1,5 @@
 import type { ExportDataset } from "./dataset";
+import { APP_NAME } from "../project-info";
 import { getColumnLabel, getDatasetLabel } from "./dataset";
 import { formatExportRange, formatExportTimestamp, getExportDisplayCell, toPlainCellValue, type ExportFileMeta } from "./file";
 
@@ -22,7 +23,7 @@ export function buildExportCsv(
   locale: string,
 ): string {
   const lines: string[] = [
-    escapeCsvCell("neko-master export"),
+    escapeCsvCell(`${APP_NAME} export`),
     escapeCsvCell(
       [
         `${locale.startsWith("zh") ? "网关" : "Backend"}: ${meta.backendName}`,

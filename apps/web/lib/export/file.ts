@@ -1,4 +1,5 @@
 import type { ExportDataset } from "./dataset";
+import { APP_EXPORT_ID } from "../project-info";
 
 export const EXPORT_FORMATS = ["json", "csv", "xlsx"] as const;
 
@@ -68,7 +69,7 @@ export function getExportFileStem(meta: ExportFileMeta): string {
   const range = meta.requestedRange ?? meta;
   const scope = meta.deviceScope && meta.deviceScope !== "all"
     ? `_${meta.deviceScope.replace(/[<>:"/\\|?*]|\p{Cc}/gu, "_").replace(/\s+/g, "_").slice(0, 64)}` : "";
-  return `neko-master-${backend}${scope}_${stamp(range.start)}_${stamp(range.end)}`;
+  return `${APP_EXPORT_ID}-${backend}${scope}_${stamp(range.start)}_${stamp(range.end)}`;
 }
 
 export function getExportFileName(

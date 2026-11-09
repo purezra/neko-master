@@ -1,4 +1,4 @@
-# Neko Master Architecture
+# FlowLens Architecture
 
 ## System Overview
 
@@ -235,7 +235,7 @@
 
 ## Agent Mode Architecture
 
-Agent mode allows a centralized Neko Master panel to receive data from remote LAN gateways
+Agent mode allows a centralized FlowLens panel to receive data from remote LAN gateways
 without requiring direct collector-to-gateway network access.
 
 ### Components
@@ -249,7 +249,7 @@ without requiring direct collector-to-gateway network access.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Central Panel (Neko Master)                   │
+│                    Central Panel (FlowLens)                   │
 │                                                                   │
 │  Fastify API Server                                               │
 │  ├─ POST /api/agent/report       ← receive batch traffic deltas  │

@@ -1,4 +1,4 @@
-# Contributing to Neko Master
+# Contributing to FlowLens
 
 **English** | [中文](./CONTRIBUTING.zh.md)
 

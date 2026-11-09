@@ -1,6 +1,6 @@
 # Release Checklist
 
-Use this checklist before shipping a new Neko Master release that includes Agent mode.
+Use this checklist before shipping a new FlowLens release that includes Agent mode.
 
 ## Release lines
 

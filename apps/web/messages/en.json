@@ -1,7 +1,8 @@
 {
   "metadata": {
-    "title": "Neko Master - Network Visualization",
-    "description": "Modern traffic analytics for edge gateways"
+    "title": "FlowLens - Traffic Analytics & Connection Diagnostics",
+    "applicationName": "FlowLens",
+    "description": "Gateway traffic visualization, connection diagnostics and proxy policy management"
   },
   "nav": {
     "diagnostics": "Connections",
@@ -19,8 +20,8 @@
     "comparison": "Compare"
   },
   "header": {
-    "title": "Neko Master",
-    "subtitle": "Modern traffic analytics for edge gateways"
+    "title": "FlowLens",
+    "subtitle": "Traffic analytics & diagnostics"
   },
   "diagnostics": {
     "quickFilters": "Quick filters",
@@ -412,10 +413,10 @@
   "about": {
     "title": "About",
     "version": "Version",
-    "projectName": "Neko Master",
-    "description": "Modern traffic analytics for edge gateways",
+    "projectName": "FlowLens",
+    "description": "Gateway traffic analytics, connection diagnostics and proxy policy management",
     "github": "GitHub",
-    "openSource": "Neko Master",
+    "openSource": "FlowLens",
     "license": "MIT License",
     "currentVersion": "Current Version",
     "latestVersion": "Latest Version",
@@ -426,7 +427,7 @@
     "newVersion": "New Version",
     "goToUpdate": "Go to update",
     "viewOnGitHub": "View on GitHub",
-    "forkDescription": "A Neko Master fork maintained by purezra",
+    "forkDescription": "FlowLens, maintained and extended by purezra from Neko Master",
     "latestForkVersion": "Latest fork release",
     "noRelease": "No release published for this fork",
     "forkRepository": "Current fork repository",

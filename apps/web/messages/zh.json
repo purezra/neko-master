@@ -1,7 +1,8 @@
 {
   "metadata": {
-    "title": "Neko Master - 流量分析",
-    "description": "现代网关流量分析工具"
+    "title": "观流 FlowLens - 流量分析与连接排查",
+    "applicationName": "观流 · FlowLens",
+    "description": "网关流量可视化分析、连接排查与策略节点管理"
   },
   "nav": {
     "diagnostics": "连接排查",
@@ -19,8 +20,8 @@
     "comparison": "时段对比"
   },
   "header": {
-    "title": "Neko Master",
-    "subtitle": "现代网关流量分析工具"
+    "title": "观流 FlowLens",
+    "subtitle": "流量分析与连接排查"
   },
   "diagnostics": {
     "quickFilters": "快捷筛选",
@@ -412,10 +413,10 @@
   "about": {
     "title": "关于",
     "version": "版本",
-    "projectName": "Neko Master",
-    "description": "现代网关流量分析工具",
+    "projectName": "观流 · FlowLens",
+    "description": "网关流量分析、连接排查与策略节点管理",
     "github": "GitHub",
-    "openSource": "Neko Master",
+    "openSource": "观流 · FlowLens",
     "license": "MIT 许可证",
     "currentVersion": "当前版本",
     "latestVersion": "最新版本",
@@ -426,7 +427,7 @@
     "newVersion": "有新版本",
     "goToUpdate": "前往更新",
     "viewOnGitHub": "在 GitHub 查看",
-    "forkDescription": "基于 Neko Master 的 purezra 维护分支",
+    "forkDescription": "观流 FlowLens，由 purezra 基于 Neko Master 维护与扩展",
     "latestForkVersion": "Fork 最新发布",
     "noRelease": "此 Fork 暂无正式发布",
     "forkRepository": "当前 Fork 仓库",

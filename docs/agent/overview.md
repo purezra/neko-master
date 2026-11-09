@@ -4,7 +4,7 @@
 
 ## Agent 模式解决的问题
 
-Agent 模式允许一个中心化的 Neko Master 面板接收来自远程 LAN 网关的数据，无需 collector 直连网关。
+Agent 模式允许一个中心化的 FlowLens 面板接收来自远程 LAN 网关的数据，无需 collector 直连网关。
 
 - 面板部署在中心位置（云服务器、NAS、服务器）
 - Agent 运行在每个网关旁边（OpenWrt、Linux 主机、路由器伴机）
@@ -14,7 +14,7 @@ Agent 模式允许一个中心化的 Neko Master 面板接收来自远程 LAN �
 
 ## 数据流
 
-1. Neko Master 后端创建一个 `agent://` 类型后端，系统自动生成 token
+1. FlowLens 后端创建一个 `agent://` 类型后端，系统自动生成 token
 2. Agent 在本地轮询 Clash/Surge 网关 API
 3. Agent 批量上报流量增量到 `/api/agent/report`
 4. Agent 定时发送心跳到 `/api/agent/heartbeat`

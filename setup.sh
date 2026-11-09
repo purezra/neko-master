@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Neko Master One-Click Setup Script
+# FlowLens One-Click Setup Script
 # Automatically detects port conflicts and provides solutions
 
 set -e
@@ -157,10 +157,10 @@ find_available_port() {
 show_welcome() {
 	echo ""
 	echo "╔════════════════════════════════════════════════════════╗"
-	echo "║          Neko Master - One-Click Setup                 ║"
+	echo "║          FlowLens - One-Click Setup                 ║"
 	echo "╚════════════════════════════════════════════════════════╝"
 	echo ""
-	print_info "This script will help you quickly configure Neko Master"
+	print_info "This script will help you quickly configure FlowLens"
 	echo ""
 }
 
@@ -250,7 +250,7 @@ create_env_file() {
 
 	cat >.env <<EOF
 # =============================================================================
-# Neko Master Environment Configuration
+# FlowLens Environment Configuration
 # =============================================================================
 # Generated at: $(date)
 
@@ -328,7 +328,7 @@ ask_start() {
 
 	if [[ $start_now =~ ^[Yy]$ ]]; then
 		echo ""
-		print_info "Starting Neko Master..."
+		print_info "Starting FlowLens..."
 		echo ""
 
 		if command -v docker-compose &>/dev/null; then
@@ -431,7 +431,7 @@ agent | agent-install)
 *)
 	print_error "Unknown command: $1"
 	echo "Usage:"
-	echo "  ./setup.sh                # setup Neko Master service"
+	echo "  ./setup.sh                # setup FlowLens service"
 	echo "  ./setup.sh agent-install  # install and run Neko Agent"
 	exit 1
 	;;

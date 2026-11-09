@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="./assets/icon-neko-master.png" width="200" alt="Neko Master Logo" style="margin-bottom: 16px;">
+  <img src="./apps/web/public/logo.png" width="200" alt="FlowLens Logo" style="margin-bottom: 16px;">
   <br>
-  <b style="font-size: 32px;">Neko Master</b>
+  <b style="font-size: 32px;">观流 · FlowLens</b>
 </p>
 
 <p align="center">
@@ -39,28 +39,27 @@
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="./assets/neko-master-overview-light.png" alt="Neko Master Preview (Light 1)" />
+      <img src="./assets/neko-master-overview-light.png" alt="FlowLens Preview (Light 1)" />
     </td>
     <td align="center" width="50%">
-      <img src="./assets/neko-master-regions-light.png" alt="Neko Master Preview (Light 2)" />
+      <img src="./assets/neko-master-regions-light.png" alt="FlowLens Preview (Light 2)" />
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="./assets/neko-master-rules-dark.png" alt="Neko Master Preview (Dark 1)" />
+      <img src="./assets/neko-master-rules-dark.png" alt="FlowLens Preview (Dark 1)" />
     </td>
     <td align="center" width="50%">
-      <img src="./assets/neko-master-domains-dark.png" alt="Neko Master Preview (Dark 2)" />
+      <img src="./assets/neko-master-domains-dark.png" alt="FlowLens Preview (Dark 2)" />
     </td>
   </tr>
 </table>
 
 ## About the Name
 
-**Neko** (ねこ) means _cat_ in Japanese.
-Pronounced **/ˈneɪkoʊ/** (NEH-ko).
+**FlowLens (观流)** brings network traffic, connection routes and proxy health into one view.
 
-Like a cat, Neko Master observes network traffic quietly and precisely.
+FlowLens is maintained by purezra and builds on [Neko Master](https://github.com/foru17/neko-master).
 It is a lightweight analytics dashboard designed for modern gateway environments.
 
 ## 📋 Table of Contents
@@ -242,7 +241,7 @@ Open <http://localhost:3000> to configure.
 
 ## 🤖 Agent Deployment
 
-Use Agent mode when you want one centralized Neko Master service and multiple remote devices (OpenWrt, Linux, macOS) collecting local gateway data. The agent runs near the gateway, pulls data, and reports to the panel — the panel never connects to the gateway directly.
+Use Agent mode when you want one centralized FlowLens service and multiple remote devices (OpenWrt, Linux, macOS) collecting local gateway data. The agent runs near the gateway, pulls data, and reports to the panel — the panel never connects to the gateway directly.
 
 Supported gateway types: **Clash / Mihomo** (WebSocket real-time) and **Surge v5+** (HTTP polling).
 
@@ -316,7 +315,7 @@ nekoagent upgrade            # global upgrade (CLI + binary)
 
 ![Surge HTTP API Configuration](./assets/neko-master-surge.png)
 
-Neko Master supports connecting to Surge gateways for complete rule chain visualization and traffic analysis.
+FlowLens supports connecting to Surge gateways for complete rule chain visualization and traffic analysis.
 
 #### 1. Enable Surge HTTP API
 
@@ -335,9 +334,9 @@ Or configure via Surge's graphical interface:
 - **Port**: Default `9091`
 - **Authentication**: Recommended to set a password for enhanced security
 
-#### 2. Add Surge Backend in Neko Master
+#### 2. Add Surge Backend in FlowLens
 
-1. Open Neko Master settings dialog
+1. Open FlowLens settings dialog
 2. Click "Add Backend"
 3. Fill in the connection info:
    - **Name**: Custom name (e.g., "Surge Home")
@@ -477,7 +476,7 @@ Additional recommendations:
 
 ## 🗄️ ClickHouse (Optional)
 
-SQLite is Neko Master's default storage engine and works well for most users.
+SQLite is FlowLens's default storage engine and works well for most users.
 Consider enabling ClickHouse if you need:
 
 - Very large datasets (hundreds of thousands of domain/IP entries)
@@ -780,7 +779,7 @@ docker compose up -d
 
 ## 🔐 Authentication & Security
 
-Neko Master supports access authentication to protect dashboard data.
+FlowLens supports access authentication to protect dashboard data.
 
 ### Production Security Baseline
 

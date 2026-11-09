@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
-import { BRAND_ASSET_VERSION } from "@/lib/project-info";
+import { APP_DISPLAY_NAME, APP_NAME, BRAND_ASSET_VERSION } from "@/lib/project-info";
+import messages from "@/messages/en.json";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Neko Master",
-    short_name: "Neko Master",
-    description: "Modern traffic analytics for edge gateways",
+    name: APP_DISPLAY_NAME,
+    short_name: APP_NAME,
+    description: messages.metadata.description,
     start_url: "/",
     scope: "/",
     display: "standalone",

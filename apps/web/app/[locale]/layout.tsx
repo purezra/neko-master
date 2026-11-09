@@ -7,7 +7,7 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { AuthProvider } from "@/lib/auth";
 import { AuthGuard } from "@/components/features/auth/auth-guard";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { ServiceWorkerRegister } from "@/components/common";
@@ -24,21 +24,26 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Neko Master",
-  description: "Modern traffic analytics for edge gateways",
-  icons: {
-    icon: `/logo.ico?v=${BRAND_ASSET_VERSION}`,
-    shortcut: `/logo.ico?v=${BRAND_ASSET_VERSION}`,
-    apple: `/icons/icon-192x192.png?v=${BRAND_ASSET_VERSION}`,
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Neko Master",
-  },
-  applicationName: "Neko Master",
-};
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  if (!routing.locales.includes(locale as (typeof routing.locales)[number])) notFound();
+  const t = await getTranslations({ locale, namespace: "metadata" });
+  return {
+    title: t("title"),
+    description: t("description"),
+    icons: {
+      icon: `/logo.ico?v=${BRAND_ASSET_VERSION}`,
+      shortcut: `/logo.ico?v=${BRAND_ASSET_VERSION}`,
+      apple: `/icons/icon-192x192.png?v=${BRAND_ASSET_VERSION}`,
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: t("applicationName"),
+    },
+    applicationName: t("applicationName"),
+  };
+}
 
 export const viewport: Viewport = {
   // Defaults from globals.css: :root is the light theme, .dark is Catppuccin
@@ -79,7 +84,6 @@ export default async function RootLayout({
           name="apple-mobile-web-app-status-bar-style"
           content="black-translucent"
         />
-        <meta name="apple-mobile-web-app-title" content="Neko Master" />
         {/*
           Load runtime config (real external ports/URLs written by
           docker-start.sh) BEFORE the app bundle, so the WebSocket client reads

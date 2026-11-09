@@ -168,7 +168,7 @@ export function Header({
             <div className="lg:hidden w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
               <Image
                 src={LOGO_URL}
-                alt="Neko Master"
+                alt={aboutT("projectName")}
                 width={32}
                 height={32}
                 className="w-full h-full object-cover"

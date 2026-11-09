@@ -1,9 +1,10 @@
 import type { ExportDataset } from "./dataset";
+import { APP_EXPORT_ID } from "../project-info";
 import { toPlainRows, formatExportTimestamp, EXPORT_TIME_ZONE, EXPORT_UTC_OFFSET, type ExportFileMeta } from "./file";
 
 export interface ExportJsonPayload {
   meta: {
-    app: "neko-master";
+    app: typeof APP_EXPORT_ID;
     version: string;
     backend: string;
     range: { start: string; end: string; endExclusive: boolean };
@@ -37,7 +38,7 @@ export function buildExportJsonPayload(
 
   return {
     meta: {
-      app: "neko-master",
+      app: APP_EXPORT_ID,
       version: process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0",
       backend: meta.backendName,
       range: { start: formatExportTimestamp(meta.start), end: formatExportTimestamp(meta.end), endExclusive: !!meta.endExclusive },

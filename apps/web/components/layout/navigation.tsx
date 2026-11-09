@@ -111,7 +111,7 @@ export function Navigation({
           <div className="w-14 h-14 rounded-xl shrink-0 flex items-center justify-center overflow-hidden hover:opacity-80">
             <Image
               src={LOGO_URL}
-              alt="Neko Master"
+              alt={headerT("title")}
               width={40}
               height={40}
               className="w-full h-full object-cover"
@@ -119,7 +119,7 @@ export function Navigation({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-bold text-xl leading-tight whitespace-nowrap">
+              <h1 className="font-bold text-lg leading-tight whitespace-nowrap">
                 {headerT("title")}
               </h1>
               <TooltipProvider delayDuration={200}>

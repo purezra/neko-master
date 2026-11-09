@@ -19,7 +19,7 @@ describe("export presentation", () => {
     expect(formatExportTimestamp(meta.start)).toBe("2026-10-18T10:00:00.000+08:00");
     expect(Date.parse(formatExportTimestamp(meta.start))).toBe(Date.parse(meta.start));
     expect(formatExportRange(meta)).toBe("[2026-10-18 10:00:00, 2026-10-19 10:00:00) (UTC+08:00)");
-    expect(getExportFileName("xlsx", meta)).toBe("neko-master-OpenClash_20261018-1000_20261019-1000.xlsx");
+    expect(getExportFileName("xlsx", meta)).toBe("flowlens-OpenClash_20261018-1000_20261019-1000.xlsx");
     expect(toExportExcelDate(new Date(meta.start)).toISOString()).toBe("2026-10-18T10:00:00.000Z");
   });
   it("rolls dates into the next Beijing day and sanitizes filenames", () => {
@@ -32,7 +32,7 @@ describe("export presentation", () => {
       start: "2026-09-19T02:00:00Z",
       requestedRange: { start: "2026-09-19T02:54:00Z", end: "2026-10-19T02:54:00Z" },
     };
-    expect(getExportFileName(format, selectedMeta)).toBe(`neko-master-OpenClash_20260919-1054_20261019-1054.${format}`);
+    expect(getExportFileName(format, selectedMeta)).toBe(`flowlens-OpenClash_20260919-1054_20261019-1054.${format}`);
     expect(formatExportRange(selectedMeta)).toBe("[2026-09-19 10:00:00, 2026-10-19 10:00:00) (UTC+08:00)");
     expect(buildExportJsonPayload([], selectedMeta, "zh").meta).toMatchObject({
       range: { start: "2026-09-19T10:00:00.000+08:00", end: "2026-10-19T10:00:00.000+08:00" },
@@ -40,8 +40,8 @@ describe("export presentation", () => {
     });
   });
   it("only removes a generic trailing gateway suffix", () => {
-    expect(getExportFileName("csv", { ...meta, backendName: "OpenClash Gateway" })).toBe("neko-master-OpenClash_20261018-1000_20261019-1000.csv");
-    expect(getExportFileName("csv", { ...meta, backendName: "HomeGateway" })).toContain("neko-master-HomeGateway_");
+    expect(getExportFileName("csv", { ...meta, backendName: "OpenClash Gateway" })).toBe("flowlens-OpenClash_20261018-1000_20261019-1000.csv");
+    expect(getExportFileName("csv", { ...meta, backendName: "HomeGateway" })).toContain("flowlens-HomeGateway_");
   });
   it.each([[0, "0.00 KB"], [1, "0.00 KB"], [1024, "1.00 KB"], [1024 ** 2, "1.00 MB"], [1.25 * 1024 ** 2, "1.25 MB"], [1024 ** 3, "1.0000 GB"], [1.234567 * 1024 ** 3, "1.2346 GB"], [1024 ** 4, "1024.0000 GB"]])("formats %s bytes as %s", (value, text) => {
     expect(formatExportTraffic(value as number)).toBe(text);

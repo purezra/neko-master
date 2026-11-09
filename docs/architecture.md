@@ -1,4 +1,4 @@
-# Neko Master 业务架构图
+# FlowLens 业务架构图
 
 ## 整体架构概览
 
@@ -236,7 +236,7 @@
 
 ## Agent 模式架构
 
-Agent 模式允许一个中心化的 Neko Master 面板接收来自远程 LAN 网关的数据，无需 collector 直连网关。
+Agent 模式允许一个中心化的 FlowLens 面板接收来自远程 LAN 网关的数据，无需 collector 直连网关。
 
 ### 组件说明
 
@@ -249,7 +249,7 @@ Agent 模式允许一个中心化的 Neko Master 面板接收来自远程 LAN �
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    中心面板 (Neko Master)                        │
+│                    中心面板 (FlowLens)                        │
 │                                                                   │
 │  Fastify API Server                                               │
 │  ├─ POST /api/agent/report       ← 接收批量流量增量               │

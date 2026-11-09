@@ -4,7 +4,7 @@
 
 ## What Agent mode solves
 
-Agent mode allows a centralized Neko Master panel to receive data from remote LAN gateways without direct collector-to-gateway access.
+Agent mode allows a centralized FlowLens panel to receive data from remote LAN gateways without direct collector-to-gateway access.
 
 - Panel service runs in one central location (cloud VPS, NAS, server)
 - Agent runs close to each gateway (OpenWrt, Linux host, router companion box)
@@ -14,7 +14,7 @@ This is ideal for multi-site homes/labs and distributed deployments.
 
 ## Data flow
 
-1. Neko Master backend creates an `agent://<agent-id>` backend with system-managed token
+1. FlowLens backend creates an `agent://<agent-id>` backend with system-managed token
 2. Agent polls Clash/Surge gateway API locally
 3. Agent submits batch deltas to `/api/agent/report`
 4. Agent sends periodic heartbeat to `/api/agent/heartbeat`
